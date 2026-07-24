@@ -33,11 +33,8 @@ class QueueRuntimeController:
             row = self.find_download_row(download_id)
             if allowed:
                 worker.resume()
-                if (
-                    row is not None
-                    and self.downloads_tab.table.item(row, 2).text()
-                    == "Scheduled"
-                ):
+                status = self.downloads_tab.table.item(row, 2) if row is not None else None
+                if status is not None and status.text() == "Scheduled":
                     self._set_status(download_id, "Downloading")
                 counts[schedule_index] = counts.get(schedule_index, 0) + 1
             else:

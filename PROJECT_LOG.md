@@ -3,6 +3,12 @@
 This file records project changes in reverse chronological order. Every entry
 corresponds to the canonical version in `VERSION` at the time of the change.
 
+## 2026-07-24 - 0.4.1 - Patch
+
+- Guarded the status-cell lookup in scheduled-transfer reconciliation so a
+  missing column item cannot raise, matching the defensive access used
+  elsewhere in the queue controller.
+
 ## 2026-07-24 - 0.4.0 - Minor
 
 - Added a top-level `max_concurrent` setting, defaulting to four, and exposed it
