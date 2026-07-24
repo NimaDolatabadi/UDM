@@ -30,6 +30,20 @@ in this repository.
 - Update related documentation whenever behavior, architecture, setup, or
   maintenance processes change.
 
+## Code Comments and Docstrings
+
+- Follow the commenting standard in `docs/commenting.md`.
+- Give every maintained source module a concise module-level docstring.
+- Document public classes, functions, and methods when their contract, inputs,
+  return value, side effects, or failure behavior is not immediately obvious.
+- Use inline comments to explain intent, constraints, invariants, or non-obvious
+  decisions. Do not narrate syntax or restate what the code already expresses.
+- Keep comments accurate whenever related behavior changes. Remove stale comments
+  in the same change that makes them obsolete.
+- Use `TODO:`, `FIXME:`, and `NOTE:` only with the meanings defined in
+  `docs/commenting.md`.
+- Do not commit commented-out code.
+
 ## Versioning
 
 - The canonical project version is stored in the root `VERSION` file.
@@ -53,7 +67,8 @@ Before considering any change complete:
 
 1. Confirm source files remain reusable, single-responsibility modules.
 2. Confirm maintained files are below 300 lines.
-3. Place or update related documentation in `docs/`.
-4. Choose the appropriate version bump and update `VERSION`.
-5. Add the matching entry to `PROJECT_LOG.md`.
-6. Run the relevant checks or tests and report their results.
+3. Confirm comments and docstrings follow `docs/commenting.md`.
+4. Place or update related documentation in `docs/`.
+5. Choose the appropriate version bump and update `VERSION`.
+6. Add the matching entry to `PROJECT_LOG.md`.
+7. Run the relevant checks or tests and report their results.

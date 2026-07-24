@@ -3,6 +3,12 @@
 This file records project changes in reverse chronological order. Every entry
 corresponds to the canonical version in `VERSION` at the time of the change.
 
+## 2026-07-24 - 0.2.1 - Patch
+
+- Added mandatory code-comment and docstring rules to `AGENTS.md`.
+- Documented standards for module and public API docstrings, rationale-focused
+  inline comments, maintenance markers, prohibited practices, and code review.
+
 ## 2026-07-24 - 0.2.0 - Minor
 
 - Replaced the 1,413-line monolithic application with a reusable `udm` package
