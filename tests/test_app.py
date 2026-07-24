@@ -22,6 +22,7 @@ class ApplicationSmokeTests(unittest.TestCase):
             application, window = create_application(
                 [],
                 config_manager=manager,
+                sync_startup=False,
             )
             window.show()
             QTimer.singleShot(50, window.close)

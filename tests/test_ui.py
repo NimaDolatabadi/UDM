@@ -79,6 +79,14 @@ class SchedulerDialogTests(QtTestCase):
             self.assertEqual(updated[field], schedule[field])
         dialog.close()
 
+    def test_default_schedule_concurrency_editor_is_hidden(self):
+        with tempfile.TemporaryDirectory() as temp:
+            manager = ConfigManager(Path(temp) / "config.json")
+            dialog = SchedulerDialog(manager.config["schedules"])
+            maximum = dialog.schedule_rows[0]["max_dl"]
+            self.assertTrue(maximum.isHidden())
+            dialog.close()
+
 
 class OptionsDialogTests(QtTestCase):
     def test_unedited_schedule_records_are_preserved(self):
@@ -89,6 +97,15 @@ class OptionsDialogTests(QtTestCase):
             self.assertEqual(updated["schedules"], manager.config["schedules"])
             dialog.close()
 
+    def test_max_concurrent_downloads_is_editable_and_persisted(self):
+        with tempfile.TemporaryDirectory() as temp:
+            manager = ConfigManager(Path(temp) / "config.json")
+            dialog = OptionsDialog(manager.config)
+            self.assertEqual(dialog.max_concurrent.value(), 4)
+            dialog.max_concurrent.setValue(7)
+            self.assertEqual(dialog.get_updated_config()["max_concurrent"], 7)
+            dialog.close()
+
 
 class MainWindowTests(QtTestCase):
     def setUp(self):
@@ -96,7 +113,10 @@ class MainWindowTests(QtTestCase):
         root = Path(self.temp.name)
         self.manager = ConfigManager(root / "config.json", root / "downloads")
         self.manager.config["close_to_tray"] = False
-        self.window = MainWindow(config_manager=self.manager)
+        self.window = MainWindow(
+            config_manager=self.manager,
+            sync_startup=False,
+        )
 
     def tearDown(self):
         self.window.close()
@@ -111,6 +131,12 @@ class MainWindowTests(QtTestCase):
         self.assertEqual(self.window.bulk_tab.results.columnCount(), 1)
         self.assertTrue(self.window.add_action.text())
         self.assertTrue(self.window.scheduler_action.text())
+
+    def test_window_reconciles_startup_preference_on_construction(self):
+        with patch("udm.ui.main_window.sync_system_startup") as sync:
+            window = MainWindow(config_manager=self.manager)
+        sync.assert_called_once_with(False)
+        window.close()
 
     def test_paused_download_can_be_added_without_network_access(self):
         self.window.add_to_downloads(
@@ -182,7 +208,7 @@ class MainWindowTests(QtTestCase):
         self.assertNotIn(download_id, self.window.cancelling_workers)
 
     def test_default_queue_enforces_maximum_concurrency(self):
-        self.manager.config["schedules"][0]["max_dl"] = 2
+        self.manager.config["max_concurrent"] = 2
         for index in range(3):
             self.window.add_to_downloads(
                 f"https://example.com/file-{index}.bin",
@@ -200,6 +226,60 @@ class MainWindowTests(QtTestCase):
             self.window.reconcile_download_queue()
         self.assertEqual(len(started), 2)
         self.assertEqual(len(self.window.pending_downloads), 1)
+
+    def test_default_queue_ignores_default_schedule_maximum(self):
+        self.manager.config["max_concurrent"] = 3
+        self.manager.config["schedules"][0]["max_dl"] = 1
+        for index in range(3):
+            self.window.add_to_downloads(
+                f"https://example.com/global-{index}.bin",
+                start_paused=True,
+            )
+        self.window.manually_paused.clear()
+        started = []
+
+        def record_start(download_id, url, save_path):
+            started.append(download_id)
+            self.window.pending_downloads.pop(download_id)
+            self.window.active_workers[download_id] = FakeWorker()
+
+        with patch.object(self.window, "start_worker", side_effect=record_start):
+            self.window.reconcile_download_queue()
+        self.assertEqual(len(started), 3)
+
+    def test_explicit_schedule_retains_its_own_concurrency_limit(self):
+        self.manager.config["max_concurrent"] = 4
+        self.manager.config["schedules"].append(
+            {
+                "name": "Night",
+                "active": True,
+                "max_dl": 1,
+                "start_date": "2026-07-01",
+                "end_date": "2026-07-31",
+                "start_time": "22:00",
+                "end_time": "23:00",
+                "recurrence": "Every Day",
+            }
+        )
+        for index in range(2):
+            self.window.add_to_downloads(
+                f"https://example.com/scheduled-{index}.bin",
+                start_paused=True,
+                schedule_idx=1,
+            )
+        self.window.manually_paused.clear()
+        started = []
+
+        def record_start(download_id, url, save_path):
+            started.append(download_id)
+            self.window.pending_downloads.pop(download_id)
+            self.window.active_workers[download_id] = FakeWorker()
+
+        with patch.object(self.window, "start_worker", side_effect=record_start):
+            self.window.reconcile_download_queue(
+                datetime(2026, 7, 10, 22, 30)
+            )
+        self.assertEqual(len(started), 1)
 
     def test_progress_populates_size_time_and_rate_columns(self):
         self.window.add_to_downloads(
@@ -238,7 +318,7 @@ class MainWindowTests(QtTestCase):
         )
         self.assertEqual(table.item(0, 2).text(), "Paused")
 
-    def test_explicit_schedule_starts_only_inside_its_window(self):
+    def test_explicit_schedule_starts_and_restores_status_inside_window(self):
         self.manager.config["schedules"].append(
             {
                 "name": "Night",
@@ -272,7 +352,22 @@ class MainWindowTests(QtTestCase):
             self.window.reconcile_download_queue(
                 datetime(2026, 7, 10, 22, 30)
             )
+            self.window.reconcile_download_queue(
+                datetime(2026, 7, 11, 12, 0)
+            )
+            self.assertEqual(
+                self.window.downloads_tab.table.item(0, 2).text(),
+                "Scheduled",
+            )
+            self.window.reconcile_download_queue(
+                datetime(2026, 7, 11, 22, 30)
+            )
         self.assertEqual(len(started), 1)
+        self.assertEqual(
+            self.window.downloads_tab.table.item(0, 2).text(),
+            "Downloading",
+        )
+        self.assertFalse(self.window.active_workers[started[0]].paused)
 
     @staticmethod
     def _item(text):

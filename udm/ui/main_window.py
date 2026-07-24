@@ -3,6 +3,7 @@
 from PyQt6.QtWidgets import QMainWindow
 
 from udm.config import ConfigManager
+from udm.startup import sync_system_startup
 from udm.ui.window_actions import WindowActions
 from udm.ui.window_bulk import BulkController
 from udm.ui.window_downloads import DownloadController
@@ -20,7 +21,7 @@ class MainWindow(
 ):
     """Umbrella Download Manager main window."""
 
-    def __init__(self, config_manager=None):
+    def __init__(self, config_manager=None, sync_startup=True):
         super().__init__()
         self.config_manager = config_manager or ConfigManager()
         self.active_workers = {}
@@ -31,6 +32,10 @@ class MainWindow(
         self.spider = None
         self.tray_icon = None
         self.clipboard = None
+        if sync_startup:
+            sync_system_startup(
+                self.config_manager.config.get("start_with_os", False)
+            )
         self.build_ui()
         self.setup_download_scheduler()
         if self.config_manager.config.get("clipboard_monitor", False):

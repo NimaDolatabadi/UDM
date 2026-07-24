@@ -33,6 +33,12 @@ class QueueRuntimeController:
             row = self.find_download_row(download_id)
             if allowed:
                 worker.resume()
+                if (
+                    row is not None
+                    and self.downloads_tab.table.item(row, 2).text()
+                    == "Scheduled"
+                ):
+                    self._set_status(download_id, "Downloading")
                 counts[schedule_index] = counts.get(schedule_index, 0) + 1
             else:
                 worker.pause()
@@ -46,7 +52,10 @@ class QueueRuntimeController:
             if not self._schedule_allows(schedule_index, schedule, now):
                 self._set_status(download_id, "Scheduled")
                 continue
-            if counts.get(schedule_index, 0) >= schedule_limit(schedule):
+            if counts.get(schedule_index, 0) >= self._queue_limit(
+                schedule_index,
+                schedule,
+            ):
                 self._set_status(download_id, "Queued")
                 continue
             self.start_worker(download_id, url, save_path)
@@ -67,9 +76,19 @@ class QueueRuntimeController:
 
     @staticmethod
     def _schedule_allows(index, schedule, now):
-        # The default schedule supplies the main queue's concurrency limit.
-        # Explicit schedules additionally gate transfers by their time window.
+        # The default queue is always time-eligible. Explicit schedules add
+        # their configured date, recurrence, and time-window restrictions.
         return index == 0 or schedule_is_open(schedule, now)
+
+    def _queue_limit(self, index, schedule):
+        if index == 0:
+            return schedule_limit(
+                {"max_dl": self.config_manager.config.get(
+                    "max_concurrent",
+                    DEFAULT_CONFIG["max_concurrent"],
+                )}
+            )
+        return schedule_limit(schedule)
 
     def _set_status(self, download_id, status):
         row = self.find_download_row(download_id)

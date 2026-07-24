@@ -95,9 +95,15 @@ class OptionsDialog(QDialog):
         self.segments = QSpinBox()
         self.segments.setRange(1, 64)
         self.segments.setValue(int(config.get("segments", 8)))
+        self.max_concurrent = QSpinBox()
+        self.max_concurrent.setRange(1, 20)
+        self.max_concurrent.setValue(
+            int(config.get("max_concurrent", DEFAULT_CONFIG["max_concurrent"]))
+        )
         layout.addRow("Custom Proxy:", self.proxy)
         layout.addRow("Custom DNS:", self.dns)
         layout.addRow("Max Segments per File:", self.segments)
+        layout.addRow("Max Concurrent Downloads:", self.max_concurrent)
         return tab
 
     def _build_categories_tab(self, config):
@@ -171,6 +177,7 @@ class OptionsDialog(QDialog):
                 "proxy": self.proxy.text().strip(),
                 "dns": self.dns.text().strip(),
                 "segments": self.segments.value(),
+                "max_concurrent": self.max_concurrent.value(),
                 "categories": categories,
             }
         )

@@ -1,73 +1,112 @@
-"""Operating-system startup registration."""
+"""Idempotent operating-system startup registration."""
 
 import logging
 from pathlib import Path
+import plistlib
 import sys
 
+STARTUP_LABEL = "com.udm.manager"
+WINDOWS_RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
+WINDOWS_VALUE_NAME = "UDMManager"
 
-def set_system_startup(enable, executable=None, script_path=None):
-    """Enable or disable launching UDM when the current user signs in."""
+
+def sync_system_startup(enable, executable=None, script_path=None):
+    """Reconcile the current user's startup entry with the desired command."""
     executable = executable or sys.executable
     script_path = script_path or str(Path(sys.argv[0]).resolve())
 
     if sys.platform == "darwin":
-        _set_macos_startup(enable, executable, script_path)
+        _sync_macos_startup(enable, executable, script_path)
     elif sys.platform.startswith("win"):
-        _set_windows_startup(enable, executable, script_path)
+        _sync_windows_startup(enable, executable, script_path)
 
 
-def _set_macos_startup(enable, executable, script_path):
-    plist_path = Path.home() / "Library/LaunchAgents/com.udm.manager.plist"
-    if not enable:
-        try:
-            plist_path.unlink(missing_ok=True)
-        except OSError as error:
-            logging.error("Failed to remove startup plist: %s", error)
-        return
+def set_system_startup(enable, executable=None, script_path=None):
+    """Apply a startup preference immediately when an option changes."""
+    sync_system_startup(enable, executable, script_path)
 
-    content = f"""<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
-  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>Label</key>
-  <string>com.udm.manager</string>
-  <key>ProgramArguments</key>
-  <array>
-    <string>{executable}</string>
-    <string>{script_path}</string>
-  </array>
-  <key>RunAtLoad</key>
-  <true/>
-</dict>
-</plist>
-"""
+
+def _macos_plist_content(executable, script_path):
+    return plistlib.dumps(
+        {
+            "Label": STARTUP_LABEL,
+            "ProgramArguments": [executable, script_path],
+            "RunAtLoad": True,
+        },
+        fmt=plistlib.FMT_XML,
+        sort_keys=False,
+    )
+
+
+def _sync_macos_startup(
+    enable,
+    executable,
+    script_path,
+    plist_path=None,
+):
+    plist_path = plist_path or (
+        Path.home() / "Library/LaunchAgents/com.udm.manager.plist"
+    )
     try:
+        if not enable:
+            if plist_path.exists():
+                plist_path.unlink()
+            return
+        desired = _macos_plist_content(executable, script_path)
+        if plist_path.exists() and plist_path.read_bytes() == desired:
+            return
         plist_path.parent.mkdir(parents=True, exist_ok=True)
-        plist_path.write_text(content, encoding="utf-8")
+        plist_path.write_bytes(desired)
     except OSError as error:
-        logging.error("Failed to set startup plist: %s", error)
+        logging.error("Failed to reconcile startup plist: %s", error)
 
 
-def _set_windows_startup(enable, executable, script_path):
-    import winreg
+def _sync_windows_startup(
+    enable,
+    executable,
+    script_path,
+    winreg_module=None,
+):
+    if winreg_module is None:
+        import winreg as winreg_module
 
-    key_path = r"Software\Microsoft\Windows\CurrentVersion\Run"
+    desired = f'"{executable}" "{script_path}"'
+    access = winreg_module.KEY_READ | winreg_module.KEY_SET_VALUE
     try:
-        key = winreg.OpenKey(
-            winreg.HKEY_CURRENT_USER,
-            key_path,
-            0,
-            winreg.KEY_ALL_ACCESS,
-        )
         if enable:
-            command = f'"{executable}" "{script_path}"'
-            winreg.SetValueEx(key, "UDMManager", 0, winreg.REG_SZ, command)
+            key = winreg_module.CreateKeyEx(
+                winreg_module.HKEY_CURRENT_USER,
+                WINDOWS_RUN_KEY,
+                0,
+                access,
+            )
         else:
             try:
-                winreg.DeleteValue(key, "UDMManager")
+                key = winreg_module.OpenKey(
+                    winreg_module.HKEY_CURRENT_USER,
+                    WINDOWS_RUN_KEY,
+                    0,
+                    access,
+                )
             except FileNotFoundError:
-                pass
-        winreg.CloseKey(key)
+                return
+        with key:
+            try:
+                current, _ = winreg_module.QueryValueEx(
+                    key,
+                    WINDOWS_VALUE_NAME,
+                )
+            except FileNotFoundError:
+                current = None
+            if enable and current != desired:
+                winreg_module.SetValueEx(
+                    key,
+                    WINDOWS_VALUE_NAME,
+                    0,
+                    winreg_module.REG_SZ,
+                    desired,
+                )
+            elif not enable and current is not None:
+                winreg_module.DeleteValue(key, WINDOWS_VALUE_NAME)
     except OSError as error:
-        logging.error("Failed to set Windows registry startup: %s", error)
+        logging.error("Failed to reconcile Windows registry startup: %s", error)

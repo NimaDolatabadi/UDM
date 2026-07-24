@@ -28,6 +28,7 @@ class ConfigManagerTests(unittest.TestCase):
             manager = ConfigManager(path, Path(temp) / "downloads")
             self.assertEqual(manager.config["language"], "Italian")
             self.assertIn("segments", manager.config)
+            self.assertEqual(manager.config["max_concurrent"], 4)
             self.assertIn("schedules", manager.config)
 
     def test_category_path_uses_configured_extension(self):

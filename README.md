@@ -20,6 +20,10 @@ categorization, scheduling, and system tray integration.
 - **Clipboard Monitor**: Detects supported downloadable links.
 - **Download Scheduler**: Enforces date ranges, time windows, recurrence, and
   per-queue concurrency limits.
+- **Controlled Concurrency**: Exposes a global maximum of four simultaneous
+  main-queue downloads in Options → Network; explicit schedules retain their
+  own limits. The default Scheduler row directs configuration to the effective
+  global setting instead of presenting an inert limit editor.
 - **Custom DNS**: Resolves HTTP and HTTPS destinations through configured DNS
   servers while retaining hostname and certificate validation.
 - **Multi-Language Support**: Includes English, Persian, Russian, French, and
@@ -90,6 +94,8 @@ python MACDM.py
 - Configurable file routing.
 - System tray controls and completion notifications.
 - Runtime-enforced scheduling and configurable custom DNS resolution.
+- Idempotent launch-time startup registration that repairs missing or stale
+  platform entries without rewriting matching entries.
 - Persistent proxy, segment, startup, category, schedule, and language settings.
 - Cross-platform dark interface styling.
 

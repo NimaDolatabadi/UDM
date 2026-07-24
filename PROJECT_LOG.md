@@ -3,6 +3,20 @@
 This file records project changes in reverse chronological order. Every entry
 corresponds to the canonical version in `VERSION` at the time of the change.
 
+## 2026-07-24 - 0.4.0 - Minor
+
+- Added a top-level `max_concurrent` setting, defaulting to four, and exposed it
+  as Max Concurrent Downloads in Options → Network.
+- Decoupled default-queue concurrency from the locked default schedule while
+  preserving each explicit schedule's independent `max_dl` limit.
+- Restored the Downloading status when an explicitly scheduled active transfer
+  resumes after its schedule window reopens.
+- Added idempotent launch-time startup reconciliation for macOS plists and
+  Windows registry values, including missing, stale-command, matching, and
+  disabled states.
+- Added configuration migration, options, queue-policy, launch integration, and
+  platform startup regression coverage.
+
 ## 2026-07-24 - 0.3.0 - Minor
 
 - Enforced schedule date, recurrence, time-window, and maximum-concurrency

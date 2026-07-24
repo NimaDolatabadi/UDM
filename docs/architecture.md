@@ -69,9 +69,10 @@ and category-path selection. It has no Qt dependency.
 ### Platform Service
 
 `udm.startup` owns operating-system startup registration. Platform-specific code
-does not leak into the main window. Registration changes only when the user
-changes the startup option; constructing the application has no platform side
-effect.
+does not leak into the main window. At construction, the main window requests an
+idempotent reconciliation: matching plist or registry entries are untouched,
+missing or stale enabled entries are written, and existing disabled entries are
+removed. Option changes use the same reconciliation service.
 
 ### Network and Scheduling Services
 
@@ -105,6 +106,9 @@ contains:
 - `is_default`: whether the record is protected from deletion.
 
 `udm.ui.options_dialog` owns general, network, and category settings.
+The Network tab exposes the top-level `max_concurrent` limit for the always
+eligible default queue. Explicit schedules retain their independent `max_dl`
+limits.
 
 ### Main Window
 

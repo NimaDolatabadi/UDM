@@ -9,7 +9,7 @@ from PyQt6.QtWidgets import QApplication
 from udm.ui.main_window import MainWindow
 
 
-def create_application(argv=None, config_manager=None):
+def create_application(argv=None, config_manager=None, sync_startup=True):
     """Create or reuse the Qt application and construct the main window."""
     application = QApplication.instance() or QApplication(argv or sys.argv)
     # Native macOS icons abort when the offscreen Qt plugin has no window server.
@@ -19,7 +19,10 @@ def create_application(argv=None, config_manager=None):
     elif sys.platform == "darwin":
         application.setStyle("macOS")
     application.setQuitOnLastWindowClosed(True)
-    window = MainWindow(config_manager=config_manager)
+    window = MainWindow(
+        config_manager=config_manager,
+        sync_startup=sync_startup,
+    )
     return application, window
 
 

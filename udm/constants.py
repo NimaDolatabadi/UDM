@@ -8,6 +8,7 @@ DEFAULT_CONFIG = {
     "proxy": "",
     "dns": "",
     "segments": 8,
+    "max_concurrent": 4,
     "start_with_os": False,
     "start_minimized": False,
     "close_to_tray": True,

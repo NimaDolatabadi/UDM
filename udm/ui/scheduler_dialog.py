@@ -96,6 +96,10 @@ class SchedulerDialog(QDialog):
         maximum = QSpinBox()
         maximum.setRange(1, 20)
         maximum.setValue(schedule.get("max_dl", 2))
+        maximum_label = QLabel("Max:")
+        if is_default:
+            maximum.hide()
+            maximum_label.setText("Limit: Options > Network")
         start_date = self._date_edit(schedule.get("start_date"), QDate.currentDate())
         end_date = self._date_edit(
             schedule.get("end_date"),
@@ -114,7 +118,7 @@ class SchedulerDialog(QDialog):
             color_label,
             active,
             name,
-            QLabel("Max:"),
+            maximum_label,
             maximum,
             QLabel("From:"),
             start_date,
