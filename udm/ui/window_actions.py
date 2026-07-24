@@ -20,6 +20,7 @@ class WindowActions:
     """Build actions and coordinate application-level dialogs."""
 
     def create_toolbar(self):
+        """Create shared queue, scheduler, settings, and navigation actions."""
         self.toolbar = QToolBar("Main Toolbar")
         self.toolbar.setIconSize(QSize(24, 24))
         self.toolbar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
@@ -72,6 +73,7 @@ class WindowActions:
         return QAction(self.style().standardIcon(standard_icon), "", self)
 
     def retranslate_ui(self):
+        """Apply the configured language to every translatable window widget."""
         language = self.config_manager.config.get("language", "English")
         text = TRANSLATIONS.get(language, TRANSLATIONS["English"])
         self.setWindowTitle(text["title"])
@@ -117,6 +119,7 @@ class WindowActions:
         self.setLayoutDirection(direction)
 
     def show_scheduler(self):
+        """Open the scheduler and persist accepted schedule records."""
         schedules = self.config_manager.config.get(
             "schedules",
             DEFAULT_CONFIG["schedules"],
@@ -134,6 +137,7 @@ class WindowActions:
             )
 
     def show_options(self):
+        """Open application settings and apply accepted changes."""
         dialog = OptionsDialog(self.config_manager.config, self)
         if dialog.exec() != QDialog.DialogCode.Accepted:
             return
@@ -141,6 +145,8 @@ class WindowActions:
         new_config = dialog.get_updated_config()
         self.config_manager.save_config(new_config)
         new_startup = new_config.get("start_with_os", False)
+        # Startup registration touches platform state, so avoid rewriting it
+        # when the user changed an unrelated option.
         if new_startup != old_startup:
             set_system_startup(new_startup)
         if self.tray_icon:
@@ -152,6 +158,7 @@ class WindowActions:
         self.retranslate_ui()
 
     def show_torrent_information(self):
+        """Explain the current torrent integration limitation."""
         QMessageBox.information(
             self,
             "Torrent Info",

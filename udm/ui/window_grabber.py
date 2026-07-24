@@ -10,6 +10,7 @@ class GrabberController:
     """Manage one-page discovery, filtering, and queue transfer."""
 
     def start_grabber(self):
+        """Start one-page link discovery for the entered URL."""
         url = self.grabber_tab.url_input.text().strip()
         if not url:
             return
@@ -21,9 +22,11 @@ class GrabberController:
         self.spider.start()
 
     def on_spider_completed(self):
+        """Restore the grabber controls when discovery finishes."""
         self.grabber_tab.start_button.setEnabled(True)
 
     def on_spider_link(self, link):
+        """Append one discovered link as an unchecked result."""
         table = self.grabber_tab.results
         row = table.rowCount()
         table.insertRow(row)
@@ -38,6 +41,7 @@ class GrabberController:
         self.apply_grab_filter()
 
     def apply_grab_filter(self):
+        """Hide results that do not contain the case-insensitive filter."""
         text = self.grabber_tab.filter_input.text().strip().lower()
         table = self.grabber_tab.results
         for row in range(table.rowCount()):
@@ -48,6 +52,7 @@ class GrabberController:
             )
 
     def grabber_select_all(self):
+        """Toggle the checked state of all currently visible results."""
         table = self.grabber_tab.results
         visible_items = [
             table.item(row, 0)
@@ -64,6 +69,7 @@ class GrabberController:
             item.setCheckState(new_state)
 
     def grabber_transfer(self):
+        """Transfer checked discovery results to the queue in paused state."""
         transferred = 0
         table = self.grabber_tab.results
         for row in range(table.rowCount()):

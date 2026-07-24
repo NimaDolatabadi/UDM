@@ -12,6 +12,8 @@ from udm.ui.main_window import MainWindow
 def create_application(argv=None, config_manager=None, register_startup=True):
     """Create or reuse the Qt application and construct the main window."""
     application = QApplication.instance() or QApplication(argv or sys.argv)
+    # Native macOS icons abort when the offscreen Qt plugin has no window server.
+    # Fusion preserves widget behavior for headless tests without native calls.
     if os.environ.get("QT_QPA_PLATFORM") == "offscreen":
         application.setStyle("Fusion")
     elif sys.platform == "darwin":

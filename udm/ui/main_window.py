@@ -29,6 +29,8 @@ class MainWindow(
         self.spider = None
         self.tray_icon = None
         self.clipboard = None
+        # Tests inject a temporary manager and disable platform registration;
+        # normal launches keep the persisted startup preference synchronized.
         if register_startup:
             set_system_startup(
                 self.config_manager.config.get("start_with_os", False)

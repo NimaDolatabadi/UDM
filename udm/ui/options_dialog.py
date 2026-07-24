@@ -136,17 +136,20 @@ class OptionsDialog(QDialog):
         return checkbox
 
     def add_category(self, category, extensions):
+        """Append an editable category and extension mapping."""
         row = self.categories.rowCount()
         self.categories.insertRow(row)
         self.categories.setItem(row, 0, QTableWidgetItem(category))
         self.categories.setItem(row, 1, QTableWidgetItem(extensions))
 
     def remove_selected_category(self):
+        """Remove the category containing the current table selection."""
         selected = self.categories.selectedItems()
         if selected:
             self.categories.removeRow(selected[0].row())
 
     def get_updated_config(self):
+        """Return edited settings while preserving fields this dialog does not own."""
         categories = {}
         for row in range(self.categories.rowCount()):
             category = self.categories.item(row, 0)
@@ -154,6 +157,8 @@ class OptionsDialog(QDialog):
             if category and extensions and category.text().strip():
                 categories[category.text().strip()] = extensions.text().strip()
 
+        # Schedules and future settings are not rendered by this dialog. Begin
+        # with the original record so accepting Options cannot discard them.
         updated = deepcopy(self.original_config)
         updated.update(
             {

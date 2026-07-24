@@ -10,6 +10,7 @@ class BulkController:
     """Manage recursive discovery and queue transfer."""
 
     def start_bulk_download(self):
+        """Start recursive discovery for the requested extensions."""
         url = self.bulk_tab.url_input.text().strip()
         extensions_text = self.bulk_tab.extensions_input.text().strip()
         if not url or not extensions_text:
@@ -30,11 +31,13 @@ class BulkController:
         self.bulk_spider.start()
 
     def stop_bulk_download(self):
+        """Request cancellation of the active recursive spider."""
         if self.bulk_spider and self.bulk_spider.isRunning():
             self.bulk_spider.cancel()
             self.bulk_tab.stop_button.setEnabled(False)
 
     def on_bulk_link_found(self, link):
+        """Append one discovered link as a checked result."""
         table = self.bulk_tab.results
         row = table.rowCount()
         table.insertRow(row)
@@ -48,6 +51,7 @@ class BulkController:
         table.setItem(row, 0, item)
 
     def on_bulk_completed(self, total):
+        """Restore controls and report the recursive scan result."""
         self.bulk_tab.start_button.setEnabled(True)
         self.bulk_tab.stop_button.setEnabled(False)
         self.bulk_tab.progress.setValue(100)
@@ -58,6 +62,7 @@ class BulkController:
         )
 
     def bulk_transfer_to_queue(self):
+        """Transfer checked recursive results to the queue in paused state."""
         transferred = 0
         table = self.bulk_tab.results
         for row in range(table.rowCount()):

@@ -71,6 +71,7 @@ class SchedulerDialog(QDialog):
         self.resize(820, 320)
 
     def add_schedule_row(self, schedule):
+        """Create editors for every field in one schedule record."""
         row_widget = QWidget()
         row_layout = QHBoxLayout(row_widget)
         row_layout.setContentsMargins(0, 0, 0, 0)
@@ -159,6 +160,7 @@ class SchedulerDialog(QDialog):
         return QTimeEdit(parsed if parsed.isValid() else fallback)
 
     def remove_schedule_row(self, row_widget):
+        """Remove a non-default schedule row from the dialog."""
         for row in self.schedule_rows:
             if row["widget"] is row_widget and not row["is_default"]:
                 self.schedule_rows.remove(row)
@@ -166,6 +168,7 @@ class SchedulerDialog(QDialog):
                 return
 
     def get_updated_schedules(self):
+        """Serialize the current date, time, recurrence, and limit editors."""
         return [
             {
                 "name": row["name"].text().strip(),

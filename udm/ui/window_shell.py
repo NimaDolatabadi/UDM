@@ -24,6 +24,7 @@ class WindowShell:
     """Construct and manage the application shell."""
 
     def build_ui(self):
+        """Build the complete window shell and connect feature controls."""
         self.resize(1000, 650)
         self.setStyleSheet(DARK_STYLESHEET)
         self._setup_icon_and_tray()
@@ -113,6 +114,7 @@ class WindowShell:
         )
 
     def setup_clipboard_monitor(self):
+        """Connect clipboard discovery once, even after repeated option changes."""
         if self.clipboard is not None:
             return
         self.clipboard = QApplication.clipboard()
@@ -120,11 +122,13 @@ class WindowShell:
         self.last_clipboard_text = ""
 
     def teardown_clipboard_monitor(self):
+        """Disconnect clipboard discovery when the option is disabled."""
         if self.clipboard is not None:
             self.clipboard.dataChanged.disconnect(self.on_clipboard_change)
             self.clipboard = None
 
     def on_clipboard_change(self):
+        """Offer supported HTTP file links copied by the user as downloads."""
         if not self.config_manager.config.get("clipboard_monitor", False):
             return
         text = self.clipboard.text().strip()
@@ -136,6 +140,8 @@ class WindowShell:
         ):
             return
         self.last_clipboard_text = text
+        # The question dialog can itself affect clipboard state on some desktop
+        # environments. Blocking signals prevents a recursive prompt.
         self.clipboard.blockSignals(True)
         try:
             from PyQt6.QtWidgets import QMessageBox
@@ -153,6 +159,7 @@ class WindowShell:
             self.clipboard.blockSignals(False)
 
     def toggle_window_visibility(self):
+        """Toggle between a visible window and background tray operation."""
         if self.isVisible():
             self.hide()
         else:
@@ -161,6 +168,7 @@ class WindowShell:
             self.activateWindow()
 
     def on_tray_icon_activated(self, reason):
+        """Toggle the window for a primary tray-icon activation."""
         if reason == QSystemTrayIcon.ActivationReason.Trigger:
             self.toggle_window_visibility()
 
@@ -175,6 +183,7 @@ class WindowShell:
             )
 
     def closeEvent(self, event):
+        """Hide to tray when configured, otherwise stop workers and close."""
         close_to_tray = self.config_manager.config.get("close_to_tray", True)
         if close_to_tray and self.tray_icon and self.tray_icon.isVisible():
             self.hide()
@@ -186,6 +195,7 @@ class WindowShell:
         event.accept()
 
     def shutdown_workers(self):
+        """Request cancellation and briefly wait for active threads to exit."""
         for worker in list(self.active_workers.values()):
             worker.cancel()
             worker.wait(2000)
@@ -197,16 +207,19 @@ class WindowShell:
             self.bulk_spider.wait(2000)
 
     def quit_app(self):
+        """Stop background work, hide the tray icon, and exit Qt."""
         self.shutdown_workers()
         if self.tray_icon:
             self.tray_icon.hide()
         QApplication.quit()
 
     def dragEnterEvent(self, event):
+        """Accept drag events containing URLs or text."""
         if event.mimeData().hasUrls() or event.mimeData().hasText():
             event.acceptProposedAction()
 
     def dropEvent(self, event):
+        """Add a dropped HTTP or HTTPS text value to the download queue."""
         if event.mimeData().hasText():
             text = event.mimeData().text().strip()
             if text.startswith(("http://", "https://")):
@@ -214,5 +227,7 @@ class WindowShell:
             event.acceptProposedAction()
 
     def apply_start_minimized(self):
+        """Schedule the initial hide after Qt finishes showing the window."""
         if self.config_manager.config.get("start_minimized", False):
+            # Delaying the hide lets Qt finish native window initialization.
             QTimer.singleShot(100, self.hide)

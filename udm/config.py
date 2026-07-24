@@ -17,6 +17,7 @@ class ConfigManager:
         self.config = self.load_config()
 
     def load_config(self):
+        """Load saved settings and merge them with current defaults."""
         if not self.config_path.exists():
             config = deepcopy(DEFAULT_CONFIG)
             self.save_config(config)
@@ -32,6 +33,8 @@ class ConfigManager:
         return self._merge_defaults(saved)
 
     def _merge_defaults(self, saved):
+        # Start from a deep copy so one manager cannot mutate global defaults or
+        # leak nested schedule/category changes into another manager instance.
         merged = deepcopy(DEFAULT_CONFIG)
         if not isinstance(saved, dict):
             return merged
@@ -46,6 +49,7 @@ class ConfigManager:
         return merged
 
     def save_config(self, config_data):
+        """Persist a defensive copy of the complete configuration."""
         self.config = deepcopy(config_data)
         try:
             self.config_path.parent.mkdir(parents=True, exist_ok=True)
@@ -55,6 +59,7 @@ class ConfigManager:
             logging.error("Config save error: %s", error)
 
     def get_category_path(self, filename):
+        """Return and create the configured download directory for a filename."""
         extension = Path(filename).suffix.lower().lstrip(".")
         categories = self.config.get("categories", {})
 

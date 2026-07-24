@@ -25,6 +25,7 @@ class DownloadWorker(QThread):
         self._cancelled = False
 
     def run(self):
+        """Select segmented or streaming transfer based on server capabilities."""
         proxies = {"http": self.proxy, "https": self.proxy} if self.proxy else None
         headers = {"User-Agent": "Mozilla/5.0"}
         file_size, accepts_ranges = self._inspect_remote(headers, proxies)
@@ -83,6 +84,8 @@ class DownloadWorker(QThread):
             self.completed.emit(self.download_id, False, str(error))
 
     def _download_segmented(self, headers, proxies, file_size):
+        # The final segment absorbs the remainder so integer division cannot
+        # leave trailing bytes unrequested.
         part_size = file_size // self.segments
         part_paths = [
             Path(f"{self.save_path}.part{index}") for index in range(self.segments)
@@ -118,6 +121,7 @@ class DownloadWorker(QThread):
             )
 
         for thread in threads:
+            # Assembly must not begin until every part file has been closed.
             thread.join()
 
         if self._cancelled or errors:
@@ -173,11 +177,14 @@ class DownloadWorker(QThread):
             pass
 
     def pause(self):
+        """Pause transfer loops without terminating the worker thread."""
         self._paused = True
 
     def resume(self):
+        """Resume a worker paused by the queue controller."""
         self._paused = False
 
     def cancel(self):
+        """Request cancellation and release any paused transfer loop."""
         self._cancelled = True
         self._paused = False

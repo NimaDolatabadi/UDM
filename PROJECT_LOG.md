@@ -3,6 +3,16 @@
 This file records project changes in reverse chronological order. Every entry
 corresponds to the canonical version in `VERSION` at the time of the change.
 
+## 2026-07-24 - 0.2.2 - Patch
+
+- Added contract docstrings to all public application classes, functions, and
+  methods.
+- Added rationale comments for configuration isolation, segmented byte ranges,
+  worker assembly, recursive crawling, Qt lifecycle behavior, schedule
+  preservation, queue row lookup and deletion, paused download startup, clipboard
+  signal handling, and platform startup updates.
+- Kept comments focused on intent and constraints rather than narrating syntax.
+
 ## 2026-07-24 - 0.2.1 - Patch
 
 - Added mandatory code-comment and docstring rules to `AGENTS.md`.

@@ -26,6 +26,7 @@ class SpiderWorker(QThread):
         self._cancelled = False
 
     def run(self):
+        """Fetch the start page and emit every discovered download link."""
         try:
             response = requests.get(
                 self.start_url,
@@ -44,6 +45,7 @@ class SpiderWorker(QThread):
             self.completed.emit()
 
     def extract_links(self, soup):
+        """Return sorted, deduplicated absolute links from parsed page markup."""
         links = set()
         if self.extract_videos:
             for video in soup.find_all("video"):
@@ -64,6 +66,7 @@ class SpiderWorker(QThread):
         return sorted(links)
 
     def cancel(self):
+        """Request cancellation between emitted discovery results."""
         self._cancelled = True
 
 
@@ -85,6 +88,7 @@ class BulkSpiderWorker(QThread):
         self._cancelled = False
 
     def run(self):
+        """Crawl same-domain pages and emit matching file URLs."""
         visited = set()
         queued = {self.start_url}
         queue = deque([self.start_url])
@@ -148,8 +152,11 @@ class BulkSpiderWorker(QThread):
                     collected.add(full_url)
                     self.found_link.emit(full_url)
             elif not extension and full_url not in visited and full_url not in queued:
+                # URLs with file extensions are terminal resources. Extensionless
+                # same-domain URLs are treated as pages eligible for traversal.
                 queued.add(full_url)
                 queue.append(full_url)
 
     def cancel(self):
+        """Request cancellation before the crawler processes another link."""
         self._cancelled = True
