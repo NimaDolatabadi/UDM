@@ -3,6 +3,50 @@
 This file records project changes in reverse chronological order. Every entry
 corresponds to the canonical version in `VERSION` at the time of the change.
 
+## 2026-07-24 - 0.5.0 - Minor
+
+- Implemented the design system in code as a new `udm/ui/theme/` package: design
+  tokens and two concrete themes (Refined Dark and Light), a single token-driven
+  stylesheet builder covering all components including explicitly styled slim
+  scrollbars and unified button styling, and a hand-authored line-icon set
+  rendered and re-tinted per theme.
+- Replaced the mismatched native Qt toolbar icons with the themed line icons and
+  added matching tab icons; removed the former single `udm/ui/styles.py`.
+- Added a user-selectable Theme setting in Options > General with a System option
+  (the default) that follows the operating system's light or dark preference and
+  restyles live when the OS toggles, alongside explicit Refined Dark and Light
+  choices. The selection persists via a new `theme` config key that auto-migrates
+  existing configuration files, and switching restyles the window and open dialogs
+  and re-tints icons without a restart.
+- Redesigned checkboxes app-wide to show a themed checkmark (rendered to a cached
+  image), and replaced the painted yellow and green queue-tree icons with themed
+  line glyphs, removing the former `udm/ui/icons.py`.
+- Rebuilt the Scheduler dialog as a table with Schedule, Enabled, and Actions
+  columns: a row per schedule with a summary, a centered enable checkbox under the
+  Enabled header, and edit and delete actions, with detailed field editing in a
+  separate `ScheduleEditorDialog`, so it no longer scrolls horizontally or feels
+  cramped. Modernized the Options dialog with a left sidebar navigation, stacked
+  pages, section headings, and generous spacing.
+- Gave the main tabs consistent page margins and made the Bulk Recursive form
+  fields grow to full width instead of appearing cramped.
+- Split the stylesheet into control and chrome fragments to keep each module
+  small, and added an optional `UDM_DEV` style hot reload that live-reapplies
+  styling when theme files change, documented in `README.md`.
+- Documented the implementation and iconography in `docs/design-system.md` and
+  added theme registry, stylesheet, glyph, checkmark-asset, hot-reload, options
+  round-trip and navigation, and live-switch regression coverage.
+
+## 2026-07-24 - 0.4.2 - Patch
+
+- Added `docs/design-system.md` defining the application design system: a shared
+  token structure (color surfaces, borders, text, accent, status, spacing,
+  radius, control heights, typography) with dark, light, and native macOS themes,
+  per-component specifications including explicit scrollbar styling, and binding
+  contribution rules for future interface work.
+- Wired `AGENTS.md` to the design system with a User Interface and Design System
+  section and a completion-checklist item requiring interface changes to conform
+  to the design system and reference tokens rather than raw values.
+
 ## 2026-07-24 - 0.4.1 - Patch
 
 - Guarded the status-cell lookup in scheduled-transfer reconciliation so a

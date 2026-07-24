@@ -44,6 +44,20 @@ in this repository.
   `docs/commenting.md`.
 - Do not commit commented-out code.
 
+## User Interface and Design System
+
+- Follow the design system in `docs/design-system.md` for every user interface
+  change.
+- Reference the named design tokens (color, spacing, radius, typography, control
+  heights) instead of hard-coded hex or pixel values.
+- Keep styling centralized in the application stylesheet. Do not style widgets
+  inline in view code.
+- Preserve the shared token structure across the Refined Dark and Light themes.
+  Any new token must be defined for both. The System option follows the operating
+  system's light or dark preference and resolves to one of these themes.
+- Update `docs/design-system.md` in the same change whenever a component's
+  appearance or the token set changes.
+
 ## Versioning
 
 - The canonical project version is stored in the root `VERSION` file.
@@ -68,7 +82,9 @@ Before considering any change complete:
 1. Confirm source files remain reusable, single-responsibility modules.
 2. Confirm maintained files are below 300 lines.
 3. Confirm comments and docstrings follow `docs/commenting.md`.
-4. Place or update related documentation in `docs/`.
-5. Choose the appropriate version bump and update `VERSION`.
-6. Add the matching entry to `PROJECT_LOG.md`.
-7. Run the relevant checks or tests and report their results.
+4. Confirm any user interface change conforms to `docs/design-system.md` and
+   references design tokens rather than raw values.
+5. Place or update related documentation in `docs/`.
+6. Choose the appropriate version bump and update `VERSION`.
+7. Add the matching entry to `PROJECT_LOG.md`.
+8. Run the relevant checks or tests and report their results.

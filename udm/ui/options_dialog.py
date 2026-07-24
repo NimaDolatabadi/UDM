@@ -10,18 +10,24 @@ from PyQt6.QtWidgets import (
     QFormLayout,
     QHeaderView,
     QHBoxLayout,
+    QLabel,
     QLineEdit,
+    QListWidget,
     QPushButton,
     QSpinBox,
+    QStackedWidget,
     QTableWidget,
     QTableWidgetItem,
-    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
 
 from udm.constants import DEFAULT_CONFIG
 from udm.i18n import TRANSLATIONS
+from udm.ui.theme import DEFAULT_THEME, THEME_OPTIONS, theme_for
+
+# Spacing scale is theme-independent.
+_SCALE = theme_for(None)
 
 
 class OptionsDialog(QDialog):
@@ -31,13 +37,33 @@ class OptionsDialog(QDialog):
         super().__init__(parent)
         self.original_config = deepcopy(config)
         self.setWindowTitle("UDM Options")
-        self.resize(550, 450)
+        self.resize(760, 540)
+
         layout = QVBoxLayout(self)
-        tabs = QTabWidget()
-        tabs.addTab(self._build_general_tab(config), "General")
-        tabs.addTab(self._build_network_tab(config), "Network")
-        tabs.addTab(self._build_categories_tab(config), "Categories")
-        layout.addWidget(tabs)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        body = QHBoxLayout()
+        body.setContentsMargins(0, 0, 0, 0)
+        body.setSpacing(0)
+
+        # Left sidebar navigation switches the stacked settings pages, replacing
+        # the former compact top tab bar.
+        self.nav = QListWidget()
+        self.nav.setObjectName("settingsNav")
+        self.nav.setFixedWidth(170)
+        self.nav.addItems(["General", "Network", "Categories"])
+
+        self.pages = QStackedWidget()
+        self.pages.addWidget(self._build_general_tab(config))
+        self.pages.addWidget(self._build_network_tab(config))
+        self.pages.addWidget(self._build_categories_tab(config))
+        self.nav.currentRowChanged.connect(self.pages.setCurrentIndex)
+        self.nav.setCurrentRow(0)
+
+        body.addWidget(self.nav)
+        body.addWidget(self.pages, 1)
+        layout.addLayout(body, 1)
 
         buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok
@@ -45,15 +71,42 @@ class OptionsDialog(QDialog):
         )
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
-        layout.addWidget(buttons)
+        footer = QHBoxLayout()
+        footer.setContentsMargins(
+            _SCALE.space_lg, _SCALE.space_md, _SCALE.space_lg, _SCALE.space_lg
+        )
+        footer.addWidget(buttons)
+        layout.addLayout(footer)
+
+    @staticmethod
+    def _page(title):
+        """Return a settings page widget and its content layout with a heading."""
+        page = QWidget()
+        outer = QVBoxLayout(page)
+        outer.setContentsMargins(
+            _SCALE.space_lg, _SCALE.space_lg, _SCALE.space_lg, _SCALE.space_lg
+        )
+        outer.setSpacing(_SCALE.space_md)
+        heading = QLabel(title)
+        heading.setProperty("heading", True)
+        outer.addWidget(heading)
+        return page, outer
 
     def _build_general_tab(self, config):
-        tab = QWidget()
-        layout = QFormLayout(tab)
+        page, outer = self._page("General")
+        form = self._form()
+        self.theme = QComboBox()
+        self.theme.setMinimumWidth(180)
+        self.theme.addItems(THEME_OPTIONS)
+        self.theme.setCurrentText(config.get("theme", DEFAULT_THEME))
         self.language = QComboBox()
-        self.language.setMinimumWidth(150)
+        self.language.setMinimumWidth(180)
         self.language.addItems(TRANSLATIONS)
         self.language.setCurrentText(config.get("language", "English"))
+        form.addRow("Theme:", self.theme)
+        form.addRow("Interface Language:", self.language)
+        outer.addLayout(form)
+
         self.start_with_os = self._check(
             "Open the app when system starts",
             config.get("start_with_os", False),
@@ -74,7 +127,6 @@ class OptionsDialog(QDialog):
             "Play sound/notification on download complete",
             config.get("sound_on_complete", False),
         )
-        layout.addRow("Interface Language:", self.language)
         for checkbox in (
             self.start_with_os,
             self.start_minimized,
@@ -82,12 +134,13 @@ class OptionsDialog(QDialog):
             self.clipboard_monitor,
             self.sound_on_complete,
         ):
-            layout.addRow(checkbox)
-        return tab
+            outer.addWidget(checkbox)
+        outer.addStretch(1)
+        return page
 
     def _build_network_tab(self, config):
-        tab = QWidget()
-        layout = QFormLayout(tab)
+        page, outer = self._page("Network")
+        form = self._form()
         self.proxy = QLineEdit(config.get("proxy", ""))
         self.proxy.setPlaceholderText("http://user:password@proxy.server:port")
         self.dns = QLineEdit(config.get("dns", ""))
@@ -100,15 +153,16 @@ class OptionsDialog(QDialog):
         self.max_concurrent.setValue(
             int(config.get("max_concurrent", DEFAULT_CONFIG["max_concurrent"]))
         )
-        layout.addRow("Custom Proxy:", self.proxy)
-        layout.addRow("Custom DNS:", self.dns)
-        layout.addRow("Max Segments per File:", self.segments)
-        layout.addRow("Max Concurrent Downloads:", self.max_concurrent)
-        return tab
+        form.addRow("Custom Proxy:", self.proxy)
+        form.addRow("Custom DNS:", self.dns)
+        form.addRow("Max Segments per File:", self.segments)
+        form.addRow("Max Concurrent Downloads:", self.max_concurrent)
+        outer.addLayout(form)
+        outer.addStretch(1)
+        return page
 
     def _build_categories_tab(self, config):
-        tab = QWidget()
-        layout = QVBoxLayout(tab)
+        page, layout = self._page("Categories")
         self.categories = QTableWidget(0, 2)
         self.categories.setHorizontalHeaderLabels(
             ["Category Path", "Extensions (comma separated)"]
@@ -123,6 +177,7 @@ class OptionsDialog(QDialog):
             self.add_category(category, extensions)
 
         button_layout = QHBoxLayout()
+        button_layout.setSpacing(_SCALE.space_sm)
         add_button = QPushButton("Add Category")
         add_button.clicked.connect(
             lambda: self.add_category("New Category", "ext1, ext2")
@@ -131,9 +186,21 @@ class OptionsDialog(QDialog):
         remove_button.clicked.connect(self.remove_selected_category)
         button_layout.addWidget(add_button)
         button_layout.addWidget(remove_button)
-        layout.addWidget(self.categories)
+        button_layout.addStretch(1)
+        layout.addWidget(self.categories, 1)
         layout.addLayout(button_layout)
-        return tab
+        return page
+
+    @staticmethod
+    def _form():
+        """Return a form layout with fields that grow to fill the page width."""
+        form = QFormLayout()
+        form.setFieldGrowthPolicy(
+            QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow
+        )
+        form.setHorizontalSpacing(_SCALE.space_md)
+        form.setVerticalSpacing(_SCALE.space_md)
+        return form
 
     @staticmethod
     def _check(label, checked):
@@ -169,6 +236,7 @@ class OptionsDialog(QDialog):
         updated.update(
             {
                 "language": self.language.currentText(),
+                "theme": self.theme.currentText(),
                 "start_with_os": self.start_with_os.isChecked(),
                 "start_minimized": self.start_minimized.isChecked(),
                 "close_to_tray": self.close_to_tray.isChecked(),

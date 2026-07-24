@@ -5,6 +5,7 @@ RECURRENCE_OPTIONS = ["Every Day", "Even Days", "Odd Days"]
 
 DEFAULT_CONFIG = {
     "language": "English",
+    "theme": "System",
     "proxy": "",
     "dns": "",
     "segments": 8,

@@ -13,6 +13,22 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from udm.ui.theme import theme_for
+
+# Spacing and radius scales are shared across themes, so a single resolved theme
+# supplies the layout metrics without coupling tabs to any particular theme.
+_SCALE = theme_for(None)
+
+
+def _page_layout(widget):
+    """Return a vertical layout with consistent page margins and spacing."""
+    layout = QVBoxLayout(widget)
+    layout.setContentsMargins(
+        _SCALE.space_lg, _SCALE.space_lg, _SCALE.space_lg, _SCALE.space_lg
+    )
+    layout.setSpacing(_SCALE.space_md)
+    return layout
+
 
 def configured_table(columns):
     """Return a row-selecting, stretch-header table."""
@@ -20,6 +36,7 @@ def configured_table(columns):
     table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
     table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
     table.setSelectionMode(QTableWidget.SelectionMode.ExtendedSelection)
+    table.verticalHeader().setVisible(False)
     return table
 
 
@@ -29,7 +46,7 @@ class DownloadsTab(QWidget):
     def __init__(self):
         super().__init__()
         self.table = configured_table(6)
-        layout = QVBoxLayout(self)
+        layout = _page_layout(self)
         layout.addWidget(self.table)
 
 
@@ -38,12 +55,13 @@ class TorrentsTab(QWidget):
 
     def __init__(self):
         super().__init__()
-        layout = QVBoxLayout(self)
+        layout = _page_layout(self)
         controls = QHBoxLayout()
+        controls.setSpacing(_SCALE.space_sm)
         self.magnet_input = QLineEdit()
         self.add_magnet_button = QPushButton()
         self.load_torrent_button = QPushButton()
-        controls.addWidget(self.magnet_input)
+        controls.addWidget(self.magnet_input, 1)
         controls.addWidget(self.add_magnet_button)
         controls.addWidget(self.load_torrent_button)
         self.table = configured_table(6)
@@ -56,24 +74,28 @@ class GrabberTab(QWidget):
 
     def __init__(self):
         super().__init__()
-        layout = QVBoxLayout(self)
+        layout = _page_layout(self)
         input_layout = QHBoxLayout()
+        input_layout.setSpacing(_SCALE.space_sm)
         self.url_input = QLineEdit()
         self.start_button = QPushButton()
-        input_layout.addWidget(self.url_input)
+        input_layout.addWidget(self.url_input, 1)
         input_layout.addWidget(self.start_button)
 
         filter_layout = QHBoxLayout()
+        filter_layout.setSpacing(_SCALE.space_sm)
         self.filter_label = QLabel("Filter:")
         self.filter_input = QLineEdit()
         filter_layout.addWidget(self.filter_label)
-        filter_layout.addWidget(self.filter_input)
+        filter_layout.addWidget(self.filter_input, 1)
 
         actions = QHBoxLayout()
+        actions.setSpacing(_SCALE.space_sm)
         self.select_all_button = QPushButton()
         self.transfer_button = QPushButton()
         actions.addWidget(self.select_all_button)
         actions.addWidget(self.transfer_button)
+        actions.addStretch(1)
 
         self.results = configured_table(1)
         layout.addLayout(input_layout)
@@ -87,8 +109,13 @@ class BulkTab(QWidget):
 
     def __init__(self):
         super().__init__()
-        layout = QVBoxLayout(self)
+        layout = _page_layout(self)
         form = QFormLayout()
+        form.setFieldGrowthPolicy(
+            QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow
+        )
+        form.setHorizontalSpacing(_SCALE.space_md)
+        form.setVerticalSpacing(_SCALE.space_sm)
         self.url_input = QLineEdit()
         self.url_input.setPlaceholderText("https://example.com/folder/")
         self.extensions_input = QLineEdit()
@@ -99,10 +126,11 @@ class BulkTab(QWidget):
         form.addRow("Extensions:", self.extensions_input)
 
         buttons = QHBoxLayout()
+        buttons.setSpacing(_SCALE.space_sm)
         self.start_button = QPushButton("Start Bulk Recursive Download")
         self.stop_button = QPushButton("Stop")
         self.stop_button.setEnabled(False)
-        buttons.addWidget(self.start_button)
+        buttons.addWidget(self.start_button, 1)
         buttons.addWidget(self.stop_button)
 
         self.progress = QProgressBar()

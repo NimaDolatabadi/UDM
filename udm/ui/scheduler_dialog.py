@@ -1,24 +1,33 @@
-"""Dialog for editing schedule date, time, and recurrence records."""
+"""Dialog listing schedules in a table with enable, edit, and delete controls.
 
-from PyQt6.QtCore import QDate, Qt, QTime
+Each row summarizes one schedule; the enable state is a checkbox under the
+Enabled header, and detailed field editing opens in
+:class:`~udm.ui.schedule_editor.ScheduleEditorDialog`.
+"""
+
+from copy import deepcopy
+
+from PyQt6.QtCore import QDate, Qt
 from PyQt6.QtWidgets import (
+    QAbstractItemView,
     QCheckBox,
-    QComboBox,
-    QDateEdit,
     QDialog,
     QDialogButtonBox,
     QHBoxLayout,
+    QHeaderView,
     QLabel,
-    QLineEdit,
     QPushButton,
-    QScrollArea,
-    QSpinBox,
-    QTimeEdit,
+    QTableWidget,
     QVBoxLayout,
     QWidget,
 )
 
-from udm.constants import RECURRENCE_OPTIONS, SCHEDULE_COLORS
+from udm.constants import SCHEDULE_COLORS
+from udm.ui.schedule_editor import ScheduleEditorDialog
+from udm.ui.theme import theme_for
+
+# Spacing scale is theme-independent.
+_SCALE = theme_for(None)
 
 
 def new_schedule():
@@ -38,27 +47,39 @@ def new_schedule():
 
 
 class SchedulerDialog(QDialog):
-    """Edit schedule records without persisting them directly."""
+    """List schedules in a table and edit them without persisting directly."""
 
     def __init__(self, schedules, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Download Scheduler Management")
+        self.schedules = [deepcopy(schedule) for schedule in schedules]
         self.schedule_rows = []
 
         layout = QVBoxLayout(self)
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        self.container = QWidget()
-        self.rows_layout = QVBoxLayout(self.container)
-        self.rows_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-        scroll.setWidget(self.container)
-        layout.addWidget(scroll)
+        layout.setContentsMargins(
+            _SCALE.space_lg, _SCALE.space_lg, _SCALE.space_lg, _SCALE.space_lg
+        )
+        layout.setSpacing(_SCALE.space_md)
 
-        for schedule in schedules:
-            self.add_schedule_row(schedule)
+        self.table = QTableWidget(0, 3)
+        self.table.setHorizontalHeaderLabels(["Schedule", "Enabled", "Actions"])
+        self.table.verticalHeader().setVisible(False)
+        self.table.setShowGrid(False)
+        self.table.setWordWrap(True)
+        self.table.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
+        self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.table.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
+        header = self.table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
+        layout.addWidget(self.table)
 
         add_button = QPushButton("Add Schedule")
-        add_button.clicked.connect(lambda: self.add_schedule_row(new_schedule()))
+        add_button.clicked.connect(self.add_new_schedule)
         layout.addWidget(add_button)
 
         buttons = QDialogButtonBox(
@@ -68,123 +89,138 @@ class SchedulerDialog(QDialog):
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
-        self.resize(820, 320)
+        self.setMinimumWidth(560)
+        self.resize(620, 440)
+        self._rebuild_rows()
 
-    def add_schedule_row(self, schedule):
-        """Create editors for every field in one schedule record."""
-        row_widget = QWidget()
-        row_layout = QHBoxLayout(row_widget)
-        row_layout.setContentsMargins(0, 0, 0, 0)
-        index = len(self.schedule_rows)
-        color = schedule.get(
-            "color",
-            SCHEDULE_COLORS[index % len(SCHEDULE_COLORS)],
-        )
+    def add_new_schedule(self):
+        """Append a new schedule and open it for editing immediately."""
+        self.schedules.append(new_schedule())
+        self._rebuild_rows()
+        self.edit_schedule(len(self.schedules) - 1)
 
-        color_label = QLabel("  ")
-        color_label.setStyleSheet(
-            f"background-color: {color}; border-radius: 4px;"
-        )
-        color_label.setFixedSize(20, 20)
-        active = QCheckBox("Enable")
-        active.setChecked(schedule.get("active", False))
-        name = QLineEdit(schedule.get("name", "New Schedule"))
-        name.setMinimumWidth(180)
+    def _rebuild_rows(self):
+        """Repopulate the table from the current schedule records."""
+        self.schedule_rows = []
+        self.table.setRowCount(0)
+        for index, schedule in enumerate(self.schedules):
+            self._add_row(index, schedule)
+        self.table.resizeRowsToContents()
+
+    def _add_row(self, index, schedule):
+        schedule.setdefault("color", SCHEDULE_COLORS[index % len(SCHEDULE_COLORS)])
         is_default = schedule.get("is_default", False)
-        name.setReadOnly(is_default)
+        self.table.insertRow(index)
+        self.table.setCellWidget(index, 0, self._schedule_cell(schedule))
 
-        maximum = QSpinBox()
-        maximum.setRange(1, 20)
-        maximum.setValue(schedule.get("max_dl", 2))
-        maximum_label = QLabel("Max:")
-        if is_default:
-            maximum.hide()
-            maximum_label.setText("Limit: Options > Network")
-        start_date = self._date_edit(schedule.get("start_date"), QDate.currentDate())
-        end_date = self._date_edit(
-            schedule.get("end_date"),
-            QDate.currentDate().addDays(7),
+        active = QCheckBox()
+        active.setChecked(schedule.get("active", False))
+        active.toggled.connect(
+            lambda checked, s=schedule: s.__setitem__("active", checked)
         )
-        start_time = self._time_edit(schedule.get("start_time"), QTime(0, 0))
-        end_time = self._time_edit(schedule.get("end_time"), QTime(6, 0))
-        recurrence = QComboBox()
-        recurrence.addItems(RECURRENCE_OPTIONS)
-        selected = schedule.get("recurrence", RECURRENCE_OPTIONS[0])
-        recurrence.setCurrentText(
-            selected if selected in RECURRENCE_OPTIONS else RECURRENCE_OPTIONS[0]
-        )
+        self.table.setCellWidget(index, 1, self._center(active))
 
-        for widget in (
-            color_label,
-            active,
-            name,
-            maximum_label,
-            maximum,
-            QLabel("From:"),
-            start_date,
-            start_time,
-            QLabel("To:"),
-            end_date,
-            end_time,
-            recurrence,
-        ):
-            row_layout.addWidget(widget)
-
+        edit_button = QPushButton("Edit")
+        edit_button.clicked.connect(lambda _, i=index: self.edit_schedule(i))
         delete_button = QPushButton("Delete")
         delete_button.setEnabled(not is_default)
-        delete_button.clicked.connect(lambda: self.remove_schedule_row(row_widget))
-        row_layout.addWidget(delete_button)
-        self.rows_layout.addWidget(row_widget)
+        delete_button.clicked.connect(lambda _, i=index: self.delete_schedule(i))
+        self.table.setCellWidget(
+            index, 2, self._actions(edit_button, delete_button)
+        )
+
         self.schedule_rows.append(
-            {
-                "widget": row_widget,
-                "active": active,
-                "name": name,
-                "max_dl": maximum,
-                "start_date": start_date,
-                "end_date": end_date,
-                "start_time": start_time,
-                "end_time": end_time,
-                "recurrence": recurrence,
-                "is_default": is_default,
-                "color": color,
-            }
+            {"schedule": schedule, "active": active, "is_default": is_default}
+        )
+
+    def _schedule_cell(self, schedule):
+        cell = QWidget()
+        cell.setObjectName("tableCell")
+        row = QHBoxLayout(cell)
+        row.setContentsMargins(
+            _SCALE.space_sm, _SCALE.space_sm, _SCALE.space_sm, _SCALE.space_sm
+        )
+        row.setSpacing(_SCALE.space_sm)
+        row.addWidget(self._color_dot(schedule["color"]))
+        text = QVBoxLayout()
+        text.setSpacing(2)
+        name = QLabel(schedule.get("name", "Schedule"))
+        summary = QLabel(self._summary(schedule))
+        summary.setProperty("muted", True)
+        summary.setWordWrap(True)
+        text.addWidget(name)
+        text.addWidget(summary)
+        row.addLayout(text, 1)
+        return cell
+
+    @staticmethod
+    def _center(widget):
+        holder = QWidget()
+        holder.setObjectName("tableCell")
+        row = QHBoxLayout(holder)
+        row.setContentsMargins(0, 0, 0, 0)
+        row.addStretch(1)
+        row.addWidget(widget)
+        row.addStretch(1)
+        return holder
+
+    @staticmethod
+    def _actions(*widgets):
+        holder = QWidget()
+        holder.setObjectName("tableCell")
+        row = QHBoxLayout(holder)
+        row.setContentsMargins(
+            _SCALE.space_sm, _SCALE.space_xs, _SCALE.space_sm, _SCALE.space_xs
+        )
+        row.setSpacing(_SCALE.space_sm)
+        for widget in widgets:
+            row.addWidget(widget)
+        return holder
+
+    def edit_schedule(self, index):
+        """Open the editor for the schedule at ``index`` and apply changes."""
+        schedule = self.schedules[index]
+        editor = ScheduleEditorDialog(deepcopy(schedule), self)
+        if editor.exec() == QDialog.DialogCode.Accepted:
+            updated = editor.get_values()
+            updated["active"] = schedule.get("active", False)
+            self.schedules[index] = updated
+            self._rebuild_rows()
+
+    def delete_schedule(self, index):
+        """Remove a non-default schedule and rebuild the table."""
+        if not self.schedules[index].get("is_default", False):
+            del self.schedules[index]
+            self._rebuild_rows()
+
+    @staticmethod
+    def _summary(schedule):
+        """Return a one-line plain-language description of a schedule."""
+        if schedule.get("is_default"):
+            limit = "Global queue limit (Options > Network)"
+        else:
+            limit = f"Up to {schedule.get('max_dl', 2)} downloads"
+        return (
+            f"{schedule.get('recurrence', 'Every Day')}  ·  "
+            f"{schedule.get('start_time', '00:00')}–"
+            f"{schedule.get('end_time', '06:00')}  ·  "
+            f"{schedule.get('start_date', '')} → "
+            f"{schedule.get('end_date', '')}  ·  {limit}"
         )
 
     @staticmethod
-    def _date_edit(value, fallback):
-        parsed = QDate.fromString(value or "", "yyyy-MM-dd")
-        editor = QDateEdit(parsed if parsed.isValid() else fallback)
-        editor.setCalendarPopup(True)
-        return editor
-
-    @staticmethod
-    def _time_edit(value, fallback):
-        parsed = QTime.fromString(value or "", "HH:mm")
-        return QTimeEdit(parsed if parsed.isValid() else fallback)
-
-    def remove_schedule_row(self, row_widget):
-        """Remove a non-default schedule row from the dialog."""
-        for row in self.schedule_rows:
-            if row["widget"] is row_widget and not row["is_default"]:
-                self.schedule_rows.remove(row)
-                row_widget.deleteLater()
-                return
+    def _color_dot(color):
+        """Return a small rounded swatch for the schedule's color."""
+        dot = QLabel()
+        dot.setFixedSize(14, 14)
+        dot.setStyleSheet(f"background-color: {color}; border-radius: 7px;")
+        return dot
 
     def get_updated_schedules(self):
-        """Serialize the current date, time, recurrence, and limit editors."""
-        return [
-            {
-                "name": row["name"].text().strip(),
-                "active": row["active"].isChecked(),
-                "max_dl": row["max_dl"].value(),
-                "start_date": row["start_date"].date().toString("yyyy-MM-dd"),
-                "end_date": row["end_date"].date().toString("yyyy-MM-dd"),
-                "start_time": row["start_time"].time().toString("HH:mm"),
-                "end_time": row["end_time"].time().toString("HH:mm"),
-                "recurrence": row["recurrence"].currentText(),
-                "color": row["color"],
-                "is_default": row["is_default"],
-            }
-            for row in self.schedule_rows
-        ]
+        """Return the current schedule records with live enable states."""
+        result = []
+        for row in self.schedule_rows:
+            schedule = dict(row["schedule"])
+            schedule["active"] = row["active"].isChecked()
+            result.append(schedule)
+        return result

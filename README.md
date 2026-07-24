@@ -41,7 +41,7 @@ UDM/
 |   |-- config.py        # Settings and category routing
 |   |-- startup.py       # OS startup integration
 |   |-- workers/         # Download and spider threads
-|   `-- ui/              # Dialogs, tabs, window controllers, and styles
+|   `-- ui/              # Dialogs, tabs, window controllers, and theme package
 |-- tests/               # Automated unit and offscreen UI tests
 |-- docs/architecture.md # Architecture and schedule record
 |-- udm_config.json      # Local user settings
@@ -84,6 +84,26 @@ python MACDM.py
 
 ---
 
+## Theming
+
+UDM ships a token-based design system with two themes, Refined Dark and Light,
+plus a **System** option (the default) that follows the operating system's light
+or dark appearance and switches live when the OS toggles. Choose a theme in
+Options > General. The design system is documented in `docs/design-system.md`.
+
+### Development style hot reload
+
+When iterating on the interface, set the `UDM_DEV` environment variable to reload
+styling live: editing any file under `udm/ui/theme/` re-applies the stylesheet and
+icon colors to the running app without a restart. Structural layout changes still
+require a restart.
+
+```bash
+UDM_DEV=1 .venv/bin/python MACDM.py
+```
+
+---
+
 ## Project Status & Roadmap
 
 ### Current Capabilities
@@ -97,7 +117,8 @@ python MACDM.py
 - Idempotent launch-time startup registration that repairs missing or stale
   platform entries without rewriting matching entries.
 - Persistent proxy, segment, startup, category, schedule, and language settings.
-- Cross-platform dark interface styling.
+- Token-based design system with Refined Dark, Light, and OS-following System
+  themes, live theme switching, and matching line icons.
 
 ### Future Development
 

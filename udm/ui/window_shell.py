@@ -15,8 +15,7 @@ from PyQt6.QtWidgets import (
 )
 
 from udm.constants import DOWNLOAD_EXTENSIONS
-from udm.ui.icons import create_queue_icon
-from udm.ui.styles import DARK_STYLESHEET
+from udm.ui.dev_reload import install_style_hot_reload
 from udm.ui.tabs import BulkTab, DownloadsTab, GrabberTab, TorrentsTab
 
 
@@ -26,13 +25,19 @@ class WindowShell:
     def build_ui(self):
         """Build the complete window shell and connect feature controls."""
         self.resize(1000, 650)
-        self.setStyleSheet(DARK_STYLESHEET)
+        # Resolve the theme before the toolbar builds so its icons can be tinted
+        # to the active text color; the stylesheet is applied here as well.
+        self.apply_theme()
+        self.watch_system_color_scheme()
         self._setup_icon_and_tray()
         self._setup_central_widgets()
         self.create_toolbar()
         self._connect_tab_controls()
         self.setAcceptDrops(True)
         self.retranslate_ui()
+        # Development convenience: live-reload styling when UDM_DEV is set. The
+        # watcher is retained so it is not garbage collected.
+        self._style_hot_reload = install_style_hot_reload(self)
 
     def _setup_icon_and_tray(self):
         logo_path = Path(__file__).resolve().parents[2] / "logo.png"
@@ -64,10 +69,10 @@ class WindowShell:
         self.queue_tree.setMinimumWidth(200)
         self.queue_root = QTreeWidgetItem(self.queue_tree, [""])
         self.main_queue = QTreeWidgetItem(self.queue_root, [""])
-        self.main_queue.setIcon(0, create_queue_icon("yellow", 3))
         self.sync_queue = QTreeWidgetItem(self.queue_root, [""])
-        self.sync_queue.setIcon(0, create_queue_icon("green", 3))
         self.queue_root.setExpanded(True)
+        # Queue icons are themed line glyphs applied by refresh_action_icons so
+        # they re-tint with the active theme.
         splitter.addWidget(self.queue_tree)
 
         self.tabs = QTabWidget()

@@ -9,6 +9,7 @@ from udm.ui.window_bulk import BulkController
 from udm.ui.window_downloads import DownloadController
 from udm.ui.window_grabber import GrabberController
 from udm.ui.window_shell import WindowShell
+from udm.ui.window_theme import ThemeController
 
 
 class MainWindow(
@@ -16,6 +17,7 @@ class MainWindow(
     BulkController,
     GrabberController,
     DownloadController,
+    ThemeController,
     WindowShell,
     QMainWindow,
 ):

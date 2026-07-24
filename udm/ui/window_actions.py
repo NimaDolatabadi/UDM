@@ -5,7 +5,6 @@ from PyQt6.QtGui import QAction
 from PyQt6.QtWidgets import (
     QDialog,
     QMessageBox,
-    QStyle,
     QToolBar,
 )
 
@@ -14,6 +13,7 @@ from udm.i18n import TRANSLATIONS
 from udm.startup import set_system_startup
 from udm.ui.options_dialog import OptionsDialog
 from udm.ui.scheduler_dialog import SchedulerDialog
+from udm.ui.theme import ACTION_GLYPHS, DEFAULT_THEME, TAB_GLYPHS, render_glyph
 
 
 class WindowActions:
@@ -22,23 +22,31 @@ class WindowActions:
     def create_toolbar(self):
         """Create shared queue, scheduler, settings, and navigation actions."""
         self.toolbar = QToolBar("Main Toolbar")
-        self.toolbar.setIconSize(QSize(24, 24))
+        self.toolbar.setIconSize(QSize(22, 22))
         self.toolbar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
         self.addToolBar(self.toolbar)
-        style = self.style()
-        self.add_action = self._action(QStyle.StandardPixmap.SP_FileIcon)
-        self.resume_action = self._action(QStyle.StandardPixmap.SP_MediaPlay)
-        self.stop_action = self._action(QStyle.StandardPixmap.SP_MediaPause)
-        self.stop_all_action = self._action(QStyle.StandardPixmap.SP_MediaStop)
-        self.delete_action = self._action(QStyle.StandardPixmap.SP_TrashIcon)
-        self.delete_completed_action = self._action(
-            QStyle.StandardPixmap.SP_DialogDiscardButton
-        )
-        self.scheduler_action = self._action(QStyle.StandardPixmap.SP_DriveNetIcon)
-        self.options_action = self._action(QStyle.StandardPixmap.SP_ComputerIcon)
-        self.grabber_action = self._action(
-            QStyle.StandardPixmap.SP_BrowserReload
-        )
+        self.add_action = QAction("", self)
+        self.resume_action = QAction("", self)
+        self.stop_action = QAction("", self)
+        self.stop_all_action = QAction("", self)
+        self.delete_action = QAction("", self)
+        self.delete_completed_action = QAction("", self)
+        self.scheduler_action = QAction("", self)
+        self.options_action = QAction("", self)
+        self.grabber_action = QAction("", self)
+        # Map each action to its glyph key so icons can be re-tinted on a theme
+        # change without rebuilding the toolbar.
+        self._action_glyphs = {
+            self.add_action: "add_url",
+            self.resume_action: "resume",
+            self.stop_action: "stop",
+            self.stop_all_action: "stop_all",
+            self.delete_action: "delete",
+            self.delete_completed_action: "del_comp",
+            self.scheduler_action: "scheduler",
+            self.options_action: "options",
+            self.grabber_action: "grabber",
+        }
         self.toolbar.addActions(
             [
                 self.add_action,
@@ -68,9 +76,32 @@ class WindowActions:
         self.grabber_action.triggered.connect(
             lambda: self.tabs.setCurrentWidget(self.grabber_tab)
         )
+        self.refresh_action_icons()
 
-    def _action(self, standard_icon):
-        return QAction(self.style().standardIcon(standard_icon), "", self)
+    def refresh_action_icons(self):
+        """Re-render toolbar, tab, and queue icons for the active theme."""
+        theme = self.current_theme
+        color = theme.text_primary
+        for action, key in self._action_glyphs.items():
+            action.setIcon(render_glyph(ACTION_GLYPHS[key], color))
+        for tab, key in (
+            (self.downloads_tab, "downloads"),
+            (self.torrents_tab, "torrents"),
+            (self.grabber_tab, "grabber"),
+            (self.bulk_tab, "bulk"),
+        ):
+            self.tabs.setTabIcon(
+                self.tabs.indexOf(tab),
+                render_glyph(TAB_GLYPHS[key], color, size=16),
+            )
+        # Queue-tree glyphs keep their color meaning: accent for the download
+        # queue, success green for the sync queue.
+        self.main_queue.setIcon(
+            0, render_glyph("queue", theme.accent, size=18)
+        )
+        self.sync_queue.setIcon(
+            0, render_glyph("sync", theme.status_success, size=18)
+        )
 
     def retranslate_ui(self):
         """Apply the configured language to every translatable window widget."""
@@ -157,6 +188,7 @@ class WindowActions:
         else:
             self.teardown_clipboard_monitor()
         self.retranslate_ui()
+        self.apply_theme(new_config.get("theme", DEFAULT_THEME))
         self.reconcile_download_queue()
 
     def show_torrent_information(self):
