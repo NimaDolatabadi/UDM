@@ -196,7 +196,11 @@ class WindowShell:
 
     def shutdown_workers(self):
         """Request cancellation and briefly wait for active threads to exit."""
-        for worker in list(self.active_workers.values()):
+        workers = {
+            *self.active_workers.values(),
+            *self.cancelling_workers.values(),
+        }
+        for worker in workers:
             worker.cancel()
             worker.wait(2000)
         if self.spider and self.spider.isRunning():

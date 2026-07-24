@@ -31,6 +31,8 @@ udm/
   app.py
   config.py
   constants.py
+  network.py
+  scheduling.py
   startup.py
   workers/
     __init__.py
@@ -39,7 +41,9 @@ udm/
   ui/
     __init__.py
     icons.py
+    download_roles.py
     options_dialog.py
+    queue_runtime.py
     scheduler_dialog.py
     styles.py
     tabs.py
@@ -65,13 +69,24 @@ and category-path selection. It has no Qt dependency.
 ### Platform Service
 
 `udm.startup` owns operating-system startup registration. Platform-specific code
-does not leak into the main window.
+does not leak into the main window. Registration changes only when the user
+changes the startup option; constructing the application has no platform side
+effect.
+
+### Network and Scheduling Services
+
+`udm.network` builds per-worker HTTP sessions and applies configured DNS servers
+while preserving the original HTTP host and HTTPS certificate hostname.
+`udm.scheduling` evaluates date, recurrence, normal or overnight time windows,
+and validated concurrency limits without depending on Qt.
 
 ### Background Workers
 
 `udm.workers.download` owns HTTP download execution, pause, resume, cancellation,
-and segmented file assembly. `udm.workers.spiders` owns single-page media
-discovery and same-domain recursive discovery.
+and segmented file assembly. A segmented response must be HTTP 206 with the
+requested `Content-Range`, every part must have its expected size, and the
+assembled file must match the advertised total. `udm.workers.spiders` owns
+single-page media discovery and same-domain recursive discovery.
 
 Workers communicate through Qt signals. They do not directly modify widgets.
 
@@ -97,6 +112,7 @@ The concrete main window composes focused mixins:
 
 - shell: application chrome, toolbar, tabs, translations, tray, and lifecycle;
 - downloads: queue rows, workers, selection, pause, resume, and deletion;
+- queue runtime: schedule-window enforcement and concurrency-limited admission;
 - grabber: single-page discovery, filtering, selection, and transfer;
 - bulk: recursive discovery, progress, cancellation, and transfer.
 
@@ -119,7 +135,8 @@ lower-level modules reusable and prevents circular imports.
 
 - Compile every maintained Python module.
 - Unit test configuration merging and category routing with temporary paths.
-- Unit test spider extraction and worker state without external network access.
+- Unit test spider extraction, DNS session construction, schedule policy, range
+  validation, integrity checks, and worker state without external network access.
 - Construct dialogs and the main window with Qt's offscreen platform.
 - Verify all four tabs, scheduler date/time fields, toolbar actions, and clean
   application shutdown.

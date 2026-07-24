@@ -3,6 +3,25 @@
 This file records project changes in reverse chronological order. Every entry
 corresponds to the canonical version in `VERSION` at the time of the change.
 
+## 2026-07-24 - 0.3.0 - Minor
+
+- Enforced schedule date, recurrence, time-window, and maximum-concurrency
+  policies at runtime for default and explicitly assigned queues.
+- Added custom DNS-backed HTTP sessions while preserving HTTP host routing and
+  HTTPS hostname verification.
+- Validated segmented HTTP 206 and Content-Range responses, individual segment
+  sizes, streaming sizes, and final assembled size before reporting completion.
+- Kept paused status stable, retained cancelling and just-completed QThreads
+  until termination, and prevented Resume from restarting terminal rows or
+  changing torrent placeholders.
+- Populated actual size, time-left, and transfer-rate columns and generated
+  collision-free destination filenames.
+- Limited startup registration changes to accepted option changes instead of
+  rewriting platform state during every launch.
+- Added regression coverage for worker integrity, queue admission, schedule
+  windows, DNS configuration, lifecycle ownership, table data, and filename
+  collisions.
+
 ## 2026-07-24 - 0.2.2 - Patch
 
 - Added contract docstrings to all public application classes, functions, and

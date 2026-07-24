@@ -18,8 +18,10 @@ categorization, scheduling, and system tray integration.
 - **Smart File Categorization**: Routes downloads by configurable extension maps.
 - **System Tray and Background Operation**: Supports hiding and closing to tray.
 - **Clipboard Monitor**: Detects supported downloadable links.
-- **Download Scheduler**: Stores date ranges, time windows, recurrence, and
-  concurrency limits.
+- **Download Scheduler**: Enforces date ranges, time windows, recurrence, and
+  per-queue concurrency limits.
+- **Custom DNS**: Resolves HTTP and HTTPS destinations through configured DNS
+  servers while retaining hostname and certificate validation.
 - **Multi-Language Support**: Includes English, Persian, Russian, French, and
   Italian.
 
@@ -87,8 +89,8 @@ python MACDM.py
 - Filterable site media extraction.
 - Configurable file routing.
 - System tray controls and completion notifications.
-- Persistent proxy, DNS, segment, startup, category, schedule, and language
-  settings.
+- Runtime-enforced scheduling and configurable custom DNS resolution.
+- Persistent proxy, segment, startup, category, schedule, and language settings.
 - Cross-platform dark interface styling.
 
 ### Future Development

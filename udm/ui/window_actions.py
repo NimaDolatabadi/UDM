@@ -130,6 +130,7 @@ class WindowActions:
                 dialog.get_updated_schedules()
             )
             self.config_manager.save_config(self.config_manager.config)
+            self.reconcile_download_queue()
             QMessageBox.information(
                 self,
                 "Scheduler Updated",
@@ -156,6 +157,7 @@ class WindowActions:
         else:
             self.teardown_clipboard_monitor()
         self.retranslate_ui()
+        self.reconcile_download_queue()
 
     def show_torrent_information(self):
         """Explain the current torrent integration limitation."""
