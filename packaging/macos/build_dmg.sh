@@ -43,6 +43,17 @@ mkdir -p "$STAGING"
 cp -R "$APP" "$STAGING/"
 ln -s /Applications "$STAGING/Applications"
 rm -f "$DMG"
-hdiutil create -volname "UDM $VERSION" -srcfolder "$STAGING" -ov -format UDZO "$DMG" >/dev/null
+# hdiutil fails intermittently with "Resource busy" while macOS scans the
+# fresh bundle (common on CI runners), so retry a few times.
+attempt=1
+until hdiutil create -volname "UDM $VERSION" -srcfolder "$STAGING" -ov -format UDZO "$DMG" >/dev/null; do
+    if [ "$attempt" -ge 5 ]; then
+        echo "hdiutil failed after $attempt attempts" >&2
+        exit 1
+    fi
+    attempt=$((attempt + 1))
+    echo "hdiutil failed; retrying (attempt $attempt)"
+    sleep 10
+done
 
 echo "Done: $DMG"

@@ -3,6 +3,18 @@
 This file records project changes in reverse chronological order. Every entry
 corresponds to the canonical version in `VERSION` at the time of the change.
 
+## 2026-10-25 - 0.8.1 - Patch
+
+- Fixed torrents losing their paused state when UDM quit soon after a pause.
+  `TorrentEngine.save_state` stopped waiting after the first resume-data
+  alert, so an older, unpaused save could be the last one written. The engine
+  now counts outstanding saves per torrent and waits for all of them; saves
+  for removed torrents are dropped, so quitting no longer stalls for the
+  5-second timeout. Found by the new macOS CI run.
+- `packaging/macos/build_dmg.sh` retries `hdiutil create`, which fails
+  intermittently with "Resource busy" on CI runners. This failure stopped the
+  0.8.0 release build, so 0.8.0 was never published.
+
 ## 2026-10-25 - 0.8.0 - Minor
 
 - Added release packages for every platform, published as GitHub releases by

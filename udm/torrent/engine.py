@@ -6,6 +6,7 @@ written whenever libtorrent produces resume data, so torrents survive both
 normal exits and crashes.
 """
 
+from collections import Counter
 import logging
 import os
 from pathlib import Path
@@ -68,6 +69,8 @@ class TorrentEngine:
         self.state_dir.mkdir(parents=True, exist_ok=True)
         self.seed = seed
         self._handles = {}
+        # Resume-data requests per torrent whose alert has not arrived yet.
+        self._pending_saves = Counter()
         category = self.lt.alert_category
         options = {
             "user_agent": user_agent,
@@ -124,7 +127,7 @@ class TorrentEngine:
         handle = self._handles.get(torrent_id)
         if handle is not None and handle.is_valid():
             handle.pause()
-            handle.save_resume_data(self.lt.save_resume_flags_t.save_info_dict)
+            self._request_save(handle)
 
     def resume(self, torrent_id):
         """Resume one torrent; unknown identifiers are ignored."""
@@ -135,6 +138,8 @@ class TorrentEngine:
     def remove(self, torrent_id, delete_files=False):
         """Remove a torrent and its resume file, optionally deleting its data."""
         handle = self._handles.pop(torrent_id, None)
+        # A removed torrent's queued saves never complete.
+        self._pending_saves.pop(torrent_id, None)
         if handle is not None and handle.is_valid():
             flags = self.lt.session.delete_files if delete_files else 0
             self.session.remove_torrent(handle, flags)
@@ -161,15 +166,15 @@ class TorrentEngine:
 
     def save_state(self, timeout=5.0):
         """Write resume data for every torrent, waiting up to ``timeout``."""
-        pending = 0
         for handle in self._handles.values():
             if handle.is_valid():
-                handle.save_resume_data(self.lt.save_resume_flags_t.save_info_dict)
-                pending += 1
+                self._request_save(handle)
+        # Earlier requests (from add or pause) may still be queued; waiting for
+        # all of them keeps an older save from landing last and winning.
         deadline = time.monotonic() + timeout
-        while pending and time.monotonic() < deadline:
+        while self._pending_saves.total() and time.monotonic() < deadline:
             self.session.wait_for_alert(250)
-            pending -= self._drain_alerts()
+            self._drain_alerts()
 
     def close(self):
         """Save state and release the session."""
@@ -191,7 +196,7 @@ class TorrentEngine:
             raise TorrentError(str(error)) from error
         self._handles[torrent_id] = handle
         # Persist immediately so a crash does not lose the new torrent.
-        handle.save_resume_data(self.lt.save_resume_flags_t.save_info_dict)
+        self._request_save(handle)
         return torrent_id, True
 
     def _start(self, params):
@@ -199,14 +204,30 @@ class TorrentEngine:
         params.flags &= ~self.lt.torrent_flags.auto_managed
         return self.session.add_torrent(params)
 
+    def _request_save(self, handle):
+        handle.save_resume_data(self.lt.save_resume_flags_t.save_info_dict)
+        torrent_id = self._id_of(handle)
+        if torrent_id is not None:
+            self._pending_saves[torrent_id] += 1
+
+    def _id_of(self, handle):
+        return next((key for key, value in self._handles.items() if value == handle), None)
+
+    def _settle_save(self, handle):
+        torrent_id = self._id_of(handle)
+        if self._pending_saves.get(torrent_id, 0) > 0:
+            self._pending_saves[torrent_id] -= 1
+
     def _drain_alerts(self):
         """Handle queued alerts; return how many resume requests finished."""
         finished = 0
         for alert in self.session.pop_alerts():
             if isinstance(alert, self.lt.save_resume_data_alert):
                 self._write_resume(alert.handle, alert.params)
+                self._settle_save(alert.handle)
                 finished += 1
             elif isinstance(alert, self.lt.save_resume_data_failed_alert):
+                self._settle_save(alert.handle)
                 finished += 1
             elif isinstance(alert, (self.lt.tracker_alert, self.lt.portmap_error_alert)):
                 # Unreachable trackers and failed router port mappings are
@@ -217,7 +238,7 @@ class TorrentEngine:
         return finished
 
     def _write_resume(self, handle, params):
-        torrent_id = next((key for key, value in self._handles.items() if value == handle), None)
+        torrent_id = self._id_of(handle)
         if torrent_id is None:
             return
         target = self.state_dir / f"{torrent_id}{RESUME_SUFFIX}"
