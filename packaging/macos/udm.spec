@@ -27,7 +27,7 @@ analysis = Analysis(
     # collect_submodules guards against imports static analysis cannot see,
     # such as the lazy exports in udm.workers.
     hiddenimports=collect_submodules("udm")
-    + ["PyQt6.QtNetwork", "PyQt6.QtSvg", "truststore", "yt_dlp_ejs"],
+    + ["PyQt6.QtNetwork", "PyQt6.QtSvg", "truststore", "yt_dlp_ejs", "libtorrent"],
     excludes=["tkinter"],
     noarchive=False,
 )
@@ -59,8 +59,23 @@ app = BUNDLE(
         "CFBundleDisplayName": "UDM",
         "CFBundleShortVersionString": VERSION,
         "CFBundleVersion": VERSION,
-        "LSMinimumSystemVersion": "11.0",
+        # The libtorrent wheel is built for macOS 15 and later.
+        "LSMinimumSystemVersion": "15.0",
         "NSHighResolutionCapable": True,
         "NSHumanReadableCopyright": "Umbrella Download Manager",
+        # Clicking a magnet link or opening a .torrent file hands it to UDM
+        # (udm.ui.open_events).
+        "CFBundleURLTypes": [
+            {"CFBundleURLName": "Magnet link", "CFBundleURLSchemes": ["magnet"]},
+        ],
+        "CFBundleDocumentTypes": [
+            {
+                "CFBundleTypeName": "BitTorrent file",
+                "CFBundleTypeRole": "Viewer",
+                "LSHandlerRank": "Alternate",
+                "LSItemContentTypes": ["org.bittorrent.torrent"],
+                "CFBundleTypeExtensions": ["torrent"],
+            },
+        ],
     },
 )

@@ -4,7 +4,8 @@ UDM ships for macOS as `UDM.app` inside a drag-to-install disk image.
 
 ## Requirements
 
-- macOS 11 or later on the build machine (the bundle targets its architecture).
+- macOS 15 or later (the libtorrent wheel's minimum, which the bundle also
+  declares); the bundle targets the build machine's architecture.
 - The project dependencies plus PyInstaller:
   `pip install -r packaging/requirements-build.txt`.
 - `sips`, `iconutil`, `codesign`, and `hdiutil`, which ship with macOS.
@@ -21,7 +22,8 @@ The script:
 2. runs PyInstaller with `packaging/macos/udm.spec`, bundling the `udm`
    package, the `extension/` source, `logo.png`, `VERSION`, yt-dlp with its
    extractors and the `yt-dlp-ejs` challenge scripts, the Deno runtime used
-   for YouTube, truststore, and the imageio-ffmpeg FFmpeg binary;
+   for YouTube, truststore, libtorrent, and the imageio-ffmpeg FFmpeg binary,
+   and registers the `magnet` URL scheme and `.torrent` document type;
 3. re-signs the bundle ad hoc so Apple silicon accepts the nested binaries;
 4. writes `dist/UDM-<version>.dmg` containing `UDM.app` and an
    `Applications` shortcut.
@@ -47,6 +49,7 @@ xattr -dr com.apple.quarantine /Applications/UDM.app
 | Logs | `~/Library/Application Support/UDM/logs/` |
 | Bridge socket | `~/Library/Application Support/UDM/bridge.sock` |
 | Installed extension | `~/Library/Application Support/UDM/extension/` |
+| Torrent resume data | `~/Library/Application Support/UDM/torrents/` |
 | Downloads | `~/Downloads/<category>/` (Options > General > Download folder) |
 
 `UDM_DATA_DIR` overrides the data directory for development and tests. A

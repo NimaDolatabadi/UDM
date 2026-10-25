@@ -36,6 +36,9 @@ categorization, scheduling, and system tray integration.
   with a bundled FFmpeg. Pick the quality from a list in the browser; captured
   links join the download list paused until you press Resume. DRM protected
   services are not supported.
+- **Native Torrents**: Magnet links and `.torrent` files download through
+  libtorrent in the Torrents tab, with pause, resume, and progress that
+  survives restarts. The app opens magnet links clicked in a browser.
 - **macOS App and DMG**: Builds a standalone `UDM.app` in a drag-to-install
   disk image.
 - **Multi-Language Support**: Includes English, Persian, Russian, French, and
@@ -54,6 +57,7 @@ UDM/
 |   |-- paths.py         # Data, log, socket, and resource locations
 |   |-- startup.py       # OS startup integration
 |   |-- bridge/          # Browser extension bridge and installer
+|   |-- torrent/         # libtorrent session and torrent status
 |   |-- workers/         # Download, stream (yt-dlp), and spider threads
 |   `-- ui/              # Dialogs, tabs, window controllers, and theme package
 |-- extension/           # UDM Capture browser extension source
@@ -71,7 +75,7 @@ UDM/
 ### Option A: macOS Disk Image
 
 Build `dist/UDM-<version>.dmg` (see `docs/packaging.md`), open it, and drag UDM
-into Applications. The build is not notarized, so Control-click UDM and choose
+into Applications. Requires macOS 15 or later. The build is not notarized, so Control-click UDM and choose
 Open on first launch.
 
 ### Option B: From Source
@@ -91,8 +95,8 @@ cd UDM
 ### 2. Install Dependencies
 
 Install PyQt6, Requests, BeautifulSoup, yt-dlp (with `yt-dlp-ejs`),
-imageio-ffmpeg (FFmpeg), deno (the JavaScript runtime YouTube needs), and
-truststore (macOS certificate verification) via pip:
+imageio-ffmpeg (FFmpeg), deno (the JavaScript runtime YouTube needs),
+truststore (macOS certificate verification), and libtorrent (torrents) via pip:
 
 ```bash
 pip install -r requirements.txt
@@ -138,6 +142,14 @@ Details and the message protocol are in `docs/browser-integration.md`.
 - The toolbar popup shows the connection status, toggles, and every media
   stream detected on the current tab.
 
+### 6. Downloading Torrents
+
+Paste a magnet link in the Torrents tab and press Add Magnet, click Load
+.torrent, or drop either on the window. Files are saved to
+`~/Downloads/Torrents/`, and the toolbar Pause, Resume, and Delete actions work
+on the selected torrents. With the DMG install, magnet links clicked in a
+browser open in UDM. See `docs/torrents.md`.
+
 ---
 
 ## Theming
@@ -180,10 +192,11 @@ UDM_DEV=1 conda run -n mine python MACDM.py
 - yt-dlp stream downloads (including YouTube) merged to MP4 with FFmpeg.
 - Single-instance app that the browser can launch on demand.
 - Standalone macOS app bundle and DMG.
+- Native magnet and `.torrent` downloads with resume across restarts.
 
 ### Future Development
 
-- Native torrent and magnet support.
+- Torrent seeding, port, and per-file options.
 - Store-published extensions and a Safari version.
 - Global and per-download speed limits.
 - Queue ordering and sequential processing.

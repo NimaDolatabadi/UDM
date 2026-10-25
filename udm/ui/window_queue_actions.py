@@ -35,7 +35,8 @@ class QueueActionsController:
     def pause_selected(self):
         """Pause selected workers and update their visible queue state."""
         for download_id, row, table in self.get_selected_rows_and_ids():
-            if table is not self.downloads_tab.table:
+            if table is self.torrents_tab.table:
+                self.pause_torrent(download_id)
                 continue
             worker = self.active_workers.get(download_id)
             if worker:
@@ -46,7 +47,8 @@ class QueueActionsController:
     def resume_selected(self):
         """Resume workers or start queue entries that were initially paused."""
         for download_id, row, table in self.get_selected_rows_and_ids():
-            if table is not self.downloads_tab.table:
+            if table is self.torrents_tab.table:
+                self.resume_torrent(download_id)
                 continue
             status_item = table.item(row, 2)
             status = status_item.text() if status_item else ""
@@ -68,7 +70,8 @@ class QueueActionsController:
         self.reconcile_download_queue()
 
     def stop_all(self):
-        """Pause every active download worker."""
+        """Pause every active download worker and torrent."""
+        self.pause_all_torrents()
         for download_id, worker in list(self.active_workers.items()):
             worker.pause()
             self.manually_paused.add(download_id)
@@ -89,6 +92,11 @@ class QueueActionsController:
         )
         # Removing bottom-up keeps remaining row indexes valid during the loop.
         for download_id, row, table in selections:
+            if table is self.torrents_tab.table:
+                # Torrent data stays on disk; only the transfer is removed.
+                self.remove_torrent(download_id)
+                table.removeRow(row)
+                continue
             worker = self.active_workers.pop(download_id, None)
             if worker:
                 worker.cancel()
@@ -109,4 +117,6 @@ class QueueActionsController:
                 and table.item(row, 2).text() == "Completed"
             ]
             for row in reversed(completed):
+                if table is self.torrents_tab.table:
+                    self.remove_torrent(table.item(row, 0).data(Qt.ItemDataRole.UserRole))
                 table.removeRow(row)

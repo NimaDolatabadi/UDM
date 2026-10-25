@@ -51,7 +51,7 @@ class DownloadsTab(QWidget):
 
 
 class TorrentsTab(QWidget):
-    """Torrent placeholder controls and table."""
+    """Magnet and torrent-file controls with the torrent table."""
 
     def __init__(self):
         super().__init__()

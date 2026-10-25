@@ -3,6 +3,30 @@
 This file records project changes in reverse chronological order. Every entry
 corresponds to the canonical version in `VERSION` at the time of the change.
 
+## 2026-10-25 - 0.7.0 - Minor
+
+- Added native BitTorrent downloads through libtorrent, replacing the Torrents
+  tab placeholder that reported missing libtorrent support. Magnet links and
+  `.torrent` files can be added from the tab, by drag and drop, from the
+  clipboard monitor, and (in the app bundle) by opening magnet links or
+  torrent files from other apps.
+- Added the Qt-free `udm.torrent` package: `TorrentEngine` (session, add,
+  pause, resume, remove, snapshots, resume files in the data directory) and
+  `TorrentSnapshot` status labels. Finished torrents are paused instead of
+  seeding.
+- Added `udm.ui.window_torrents.TorrentController` for the Torrents table,
+  completion notices, and saving state on exit, and `udm.ui.open_events` for
+  macOS open events. Toolbar pause, resume, stop all, delete, and delete
+  completed now act on torrents.
+- Torrent content is saved to the `.torrent` category folder
+  (`~/Downloads/Torrents/` by default); deleting a torrent keeps its files.
+- Added `libtorrent` to the requirements and the app bundle, registered the
+  `magnet` URL scheme and `.torrent` document type, and raised the bundle's
+  minimum macOS version to 15 to match the libtorrent wheel.
+- Documented torrents in `docs/torrents.md` and updated the architecture,
+  packaging, and README documentation; added engine tests that run offline and
+  offscreen controller tests.
+
 ## 2026-10-25 - 0.6.0 - Minor
 
 - Added the UDM Capture browser extension (`extension/`) for Chromium browsers

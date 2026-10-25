@@ -47,6 +47,9 @@ udm/
     extension_build.py    per-engine extension assembly
     installer.py          per-browser installation
   i18n/                   translation catalogs
+  torrent/
+    engine.py             libtorrent session and resume files
+    status.py             torrent snapshots and labels
   workers/
     download.py           segmented and streaming HTTP downloads
     formatting.py         transfer rate and duration text
@@ -61,6 +64,8 @@ udm/
     window_downloads.py   queue rows and worker lifecycle
     window_queue_actions.py  pause, resume, stop, delete
     window_bridge.py      extension request handling
+    window_torrents.py    Torrents tab and torrent engine lifecycle
+    open_events.py        macOS magnet and .torrent open events
     window_grabber.py     single-page discovery
     window_bulk.py        recursive discovery
     queue_runtime.py      schedule and concurrency admission
@@ -153,7 +158,8 @@ The concrete main window composes focused mixins:
 - grabber: single-page discovery, filtering, selection, and transfer;
 - bulk: recursive discovery, progress, cancellation, and transfer;
 - queue actions: pause, resume, stop, and delete for selected rows;
-- bridge: browser-extension requests and window focus requests.
+- bridge: browser-extension requests and window focus requests;
+- torrents: magnet and `.torrent` adds, progress refresh, and persistence.
 
 ### Browser Bridge
 
@@ -161,6 +167,12 @@ The concrete main window composes focused mixins:
 native host, which relays each request over a local socket to the
 `BridgeServer` owned by the running window, launching UDM when needed. The same
 socket enforces a single running instance. See `docs/browser-integration.md`.
+
+### Torrents
+
+`udm.torrent.TorrentEngine` wraps one libtorrent session without Qt. The
+`TorrentController` window mixin polls its snapshots once a second into the
+Torrents tab and saves state on exit. See `docs/torrents.md`.
 
 The split follows behavior boundaries while keeping the shared main-window state
 explicit. UI construction helpers live in `udm.ui.tabs`.

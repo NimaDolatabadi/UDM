@@ -11,6 +11,7 @@ from udm.bridge.protocol import BridgeError, send_to_app
 from udm.bridge.server import instance_is_running
 from udm.tls import use_system_trust
 from udm.ui.main_window import MainWindow
+from udm.ui.open_events import OpenEventFilter
 
 
 def create_application(argv=None, config_manager=None, sync_startup=True):
@@ -45,5 +46,7 @@ def main():
     # The bridge starts only for the real app so tests never bind the socket.
     if not window.start_bridge(socket_path):
         logging.error("Browser bridge unavailable; extension capture disabled")
+    # Magnet links and .torrent files opened from other apps arrive as events.
+    application.installEventFilter(OpenEventFilter(window))
     window.show()
     return application.exec()

@@ -11,6 +11,7 @@ from udm.ui.window_downloads import DownloadController
 from udm.ui.window_grabber import GrabberController
 from udm.ui.window_shell import WindowShell
 from udm.ui.window_theme import ThemeController
+from udm.ui.window_torrents import TorrentController
 
 
 class MainWindow(
@@ -19,6 +20,7 @@ class MainWindow(
     BulkController,
     GrabberController,
     DownloadController,
+    TorrentController,
     ThemeController,
     WindowShell,
     QMainWindow,
@@ -34,6 +36,12 @@ class MainWindow(
         # Captured browser requests keyed by download identifier.
         self.download_requests = {}
         self.bridge_server = None
+        self.torrent_engine = None
+        self.torrent_timer = None
+        # Torrents that reported completion, and those seen unfinished, so
+        # only completions during this session are announced.
+        self.torrent_finished = set()
+        self.torrent_seen = set()
         self.manually_paused = set()
         self.bulk_spider = None
         self.spider = None
@@ -45,6 +53,7 @@ class MainWindow(
             )
         self.build_ui()
         self.setup_download_scheduler()
+        self.start_torrents()
         if self.config_manager.config.get("clipboard_monitor", False):
             self.setup_clipboard_monitor()
         self.apply_start_minimized()

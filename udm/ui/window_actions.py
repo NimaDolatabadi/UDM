@@ -190,12 +190,3 @@ class WindowActions:
         self.retranslate_ui()
         self.apply_theme(new_config.get("theme", DEFAULT_THEME))
         self.reconcile_download_queue()
-
-    def show_torrent_information(self):
-        """Explain the current torrent integration limitation."""
-        QMessageBox.information(
-            self,
-            "Torrent Info",
-            "Native torrent/magnet downloading requires libtorrent or "
-            "external client support.",
-        )

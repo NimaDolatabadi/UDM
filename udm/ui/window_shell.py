@@ -14,6 +14,7 @@ from PyQt6.QtWidgets import (
 
 from udm import paths
 from udm.constants import DOWNLOAD_EXTENSIONS
+from udm.torrent.engine import is_magnet
 from udm.ui.dev_reload import install_style_hot_reload
 from udm.ui.tabs import BulkTab, DownloadsTab, GrabberTab, TorrentsTab
 
@@ -96,10 +97,13 @@ class WindowShell:
             self.show_download_context_menu
         )
         self.torrents_tab.add_magnet_button.clicked.connect(
-            self.show_torrent_information
+            self.add_magnet_from_input
+        )
+        self.torrents_tab.magnet_input.returnPressed.connect(
+            self.add_magnet_from_input
         )
         self.torrents_tab.load_torrent_button.clicked.connect(
-            self.show_torrent_information
+            self.choose_torrent_file
         )
         self.grabber_tab.start_button.clicked.connect(self.start_grabber)
         self.grabber_tab.filter_input.textChanged.connect(
@@ -132,15 +136,19 @@ class WindowShell:
             self.clipboard = None
 
     def on_clipboard_change(self):
-        """Offer supported HTTP file links copied by the user as downloads."""
+        """Offer copied magnet links and supported HTTP file links."""
         if not self.config_manager.config.get("clipboard_monitor", False):
             return
         text = self.clipboard.text().strip()
+        magnet = is_magnet(text)
         if (
             not text
             or text == self.last_clipboard_text
-            or not text.startswith(("http://", "https://"))
-            or not text.lower().split("?", 1)[0].endswith(DOWNLOAD_EXTENSIONS)
+            or not (
+                magnet
+                or text.startswith(("http://", "https://"))
+                and text.lower().split("?", 1)[0].endswith(DOWNLOAD_EXTENSIONS)
+            )
         ):
             return
         self.last_clipboard_text = text
@@ -150,15 +158,19 @@ class WindowShell:
         try:
             from PyQt6.QtWidgets import QMessageBox
 
+            kind = "magnet link" if magnet else "file link"
             answer = QMessageBox.question(
                 self,
                 "Download Detected",
-                f"Detected a file link in clipboard:\n{text}\n\n"
+                f"Detected a {kind} in clipboard:\n{text}\n\n"
                 "Add to downloads?",
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             )
             if answer == QMessageBox.StandardButton.Yes:
-                self.add_to_downloads(text)
+                if magnet:
+                    self.add_torrent_source(text)
+                else:
+                    self.add_to_downloads(text)
         finally:
             self.clipboard.blockSignals(False)
 
@@ -195,6 +207,7 @@ class WindowShell:
             return
         self.shutdown_workers()
         self.stop_bridge()
+        self.stop_torrents()
         if self.tray_icon:
             self.tray_icon.hide()
         event.accept()
@@ -219,6 +232,7 @@ class WindowShell:
         """Stop background work, hide the tray icon, and exit Qt."""
         self.shutdown_workers()
         self.stop_bridge()
+        self.stop_torrents()
         if self.tray_icon:
             self.tray_icon.hide()
         QApplication.quit()
@@ -229,12 +243,22 @@ class WindowShell:
             event.acceptProposedAction()
 
     def dropEvent(self, event):
-        """Add a dropped HTTP or HTTPS text value to the download queue."""
-        if event.mimeData().hasText():
-            text = event.mimeData().text().strip()
-            if text.startswith(("http://", "https://")):
+        """Add dropped HTTP links, magnet links, or ``.torrent`` files."""
+        mime = event.mimeData()
+        torrent_files = [
+            url.toLocalFile()
+            for url in mime.urls()
+            if url.isLocalFile() and url.toLocalFile().lower().endswith(".torrent")
+        ]
+        for path in torrent_files:
+            self.add_torrent_source(path)
+        if not torrent_files and mime.hasText():
+            text = mime.text().strip()
+            if is_magnet(text):
+                self.add_torrent_source(text)
+            elif text.startswith(("http://", "https://")):
                 self.add_to_downloads(text)
-            event.acceptProposedAction()
+        event.acceptProposedAction()
 
     def apply_start_minimized(self):
         """Schedule the initial hide after Qt finishes showing the window."""
