@@ -12,7 +12,7 @@ from udm.bridge.protocol import NATIVE_HOST_NAME
 
 EXPECTED_CHROMIUM_ID = "himmjkpdagijcljpofjkgoagloapginc"
 SCRIPTS = (
-    "background.js", "common.js", "media.js", "overlay.js", "overlay-style.js",
+    "background.js", "common.js", "downloads.js", "media.js", "overlay.js", "overlay-style.js",
     "popup.css", "popup.html", "popup.js",
 )
 
@@ -37,6 +37,15 @@ class ExtensionBuildTests(unittest.TestCase):
         self.assertNotIn("key", manifest)
         self.assertEqual(manifest["background"]["scripts"][-1], "background.js")
         self.assertIn("gecko", manifest["browser_specific_settings"])
+        self.assertIn("downloads.js", manifest["background"]["scripts"])
+        # Firefox adds blocking webRequest on top of the shared permissions.
+        self.assertIn("webRequestBlocking", manifest["permissions"])
+        self.assertIn("downloads", manifest["permissions"])
+
+    def test_chromium_build_omits_blocking_web_request(self):
+        manifest = extension_build.load_manifest(CHROMIUM)
+        self.assertNotIn("webRequestBlocking", manifest["permissions"])
+        self.assertIn("downloads", manifest["permissions"])
 
     def test_rebuild_replaces_stale_files(self):
         with tempfile.TemporaryDirectory() as temp:

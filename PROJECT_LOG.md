@@ -3,6 +3,21 @@
 This file records project changes in reverse chronological order. Every entry
 corresponds to the canonical version in `VERSION` at the time of the change.
 
+## 2026-10-25 - 0.7.1 - Patch
+
+- Fixed browser download capture (issue #5): clicking a download link in
+  Firefox showed the browser's save dialog instead of sending the file to UDM,
+  because capture relied on `downloads.onCreated`, which fires after the
+  prompt. Firefox now intercepts download responses with a blocking
+  `webRequest.onHeadersReceived` listener (new `webRequestBlocking`
+  permission) and cancels them once UDM accepts; Chromium captures in
+  `downloads.onDeterminingFilename`, before the Save As dialog.
+  `downloads.onCreated` remains the Firefox fallback, and refused links fall
+  back to the browser without being offered twice.
+- Moved download capture into `extension/src/downloads.js`. Engine manifest
+  overlays now extend the shared `permissions` list instead of replacing it.
+- Reinstall the extension from Options > Browser and reload it to apply.
+
 ## 2026-10-25 - 0.7.0 - Minor
 
 - Added native BitTorrent downloads through libtorrent, replacing the Torrents

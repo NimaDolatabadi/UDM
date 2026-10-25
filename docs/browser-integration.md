@@ -6,9 +6,18 @@ Opera, Arc, Chromium) and in Firefox, from one shared source tree.
 
 ## What It Does
 
-- **Download capture**: new browser downloads are paused, offered to UDM with
-  the page's cookies, referrer, and user agent, then cancelled in the browser
-  once UDM accepts them. When UDM is unreachable the browser download resumes.
+- **Download capture**: clicking a download link hands the file to UDM with
+  the page's cookies, referrer, and user agent before the browser shows its
+  save dialog. Firefox claims the response itself in a blocking
+  `webRequest.onHeadersReceived` listener for page and frame loads that carry
+  `Content-Disposition: attachment` or a content type the browser cannot
+  display, and cancels the request once UDM accepts it; a tab opened only for
+  the download is closed. Chromium decides in `downloads.onDeterminingFilename`,
+  which runs before the Save As dialog, and cancels the download once UDM
+  accepts it. Downloads Firefox reports only after they start (for example,
+  from scripts or POST forms) are paused, offered to UDM, and cancelled on
+  acceptance. When UDM is unreachable or refuses a link, the browser handles
+  the download normally and the link is not offered again for 30 seconds.
 - **Media detection**: network responses are inspected for HLS (`.m3u8`) and
   DASH (`.mpd`) manifests and for video or audio files. Segments and byte-range
   fragments are ignored. Results are listed per tab with a toolbar badge.
@@ -40,7 +49,8 @@ UDM app --> DownloadWorker (direct files) or StreamWorker (yt-dlp + FFmpeg)
 | ------ | -------------- |
 | `extension/src/common.js` | API handle, settings, native messaging, cookie capture |
 | `extension/src/media.js` | Response classification and per-tab media storage |
-| `extension/src/background.js` | Download capture, menus, and message routing |
+| `extension/src/downloads.js` | Download capture before the browser prompts |
+| `extension/src/background.js` | Media listener, menus, and message routing |
 | `extension/src/overlay*.js` | On-video button and panel in a closed Shadow DOM |
 | `extension/src/popup.*` | Toolbar popup |
 | `udm/bridge/protocol.py` | Native framing and the app socket protocol |

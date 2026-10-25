@@ -4,31 +4,12 @@
 // Chromium loads this file alone as a service worker; Firefox lists the
 // helper scripts in the manifest, where importScripts does not exist.
 if (typeof importScripts === "function" && typeof sendToUdm === "undefined") {
-  importScripts("common.js", "media.js");
+  importScripts("common.js", "media.js", "downloads.js");
 }
 
 const ICON = "icons/icon-128.png";
 
-/* Hand new browser downloads to UDM, falling back to the browser on failure. */
-api.downloads.onCreated.addListener(async (item) => {
-  const url = item.finalUrl || item.url;
-  if (!isHttpUrl(url)) return;
-  const settings = await getSettings();
-  if (!settings.captureDownloads) return;
-  // Pause first so the browser does not keep transferring while UDM answers.
-  const paused = await api.downloads.pause(item.id).then(() => true, () => false);
-  const request = await buildRequest("download", url, {
-    referrer: item.referrer ?? "",
-    filename: baseName(item.filename),
-  });
-  const reply = await sendToUdm(request);
-  if (!reply.ok) {
-    if (paused) await api.downloads.resume(item.id).catch(() => {});
-    return;
-  }
-  await api.downloads.cancel(item.id).catch(() => {});
-  await api.downloads.erase({ id: item.id }).catch(() => {});
-});
+installDownloadCapture();
 
 api.webRequest.onHeadersReceived.addListener(
   (details) => {

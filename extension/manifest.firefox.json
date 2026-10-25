@@ -1,6 +1,9 @@
 {
+  "permissions": [
+    "webRequestBlocking"
+  ],
   "background": {
-    "scripts": ["common.js", "media.js", "background.js"]
+    "scripts": ["common.js", "media.js", "downloads.js", "background.js"]
   },
   "browser_specific_settings": {
     "gecko": {

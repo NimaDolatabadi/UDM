@@ -22,10 +22,17 @@ def source_dir():
 
 
 def load_manifest(engine, source=None):
-    """Return the merged manifest for ``engine`` (``chromium`` or ``firefox``)."""
+    """Return the merged manifest for ``engine`` (``chromium`` or ``firefox``).
+
+    Overlay keys replace base keys, except ``permissions``, which the overlay
+    extends so an engine can add permissions the other engine rejects.
+    """
     source = Path(source or source_dir())
     manifest = _read_json(source / "manifest.base.json")
-    manifest.update(_read_json(source / f"manifest.{engine}.json"))
+    overlay = _read_json(source / f"manifest.{engine}.json")
+    extra = overlay.pop("permissions", [])
+    manifest.update(overlay)
+    manifest["permissions"] = manifest.get("permissions", []) + extra
     return manifest
 
 
