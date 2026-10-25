@@ -3,6 +3,13 @@
 This file records project changes in reverse chronological order. Every entry
 corresponds to the canonical version in `VERSION` at the time of the change.
 
+## 2026-10-25 - 0.5.1 - Patch
+
+- Stopped tracking the per-user `udm_config.json`; the application creates it
+  with defaults on first run, and it is now listed in `.gitignore`.
+- Added shared `.vscode/settings.json` selecting the conda environment manager.
+- Updated the README project structure to describe the untracked settings file.
+
 ## 2026-07-24 - 0.5.0 - Minor
 
 - Implemented the design system in code as a new `udm/ui/theme/` package: design

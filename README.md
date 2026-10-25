@@ -44,7 +44,7 @@ UDM/
 |   `-- ui/              # Dialogs, tabs, window controllers, and theme package
 |-- tests/               # Automated unit and offscreen UI tests
 |-- docs/architecture.md # Architecture and schedule record
-|-- udm_config.json      # Local user settings
+|-- udm_config.json      # Local settings, created on first run (untracked)
 `-- logo.png             # Window and tray icon
 ```
 
