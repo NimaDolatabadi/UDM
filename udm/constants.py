@@ -2,6 +2,7 @@
 
 SCHEDULE_COLORS = ["#ff4d4d", "#ffad33", "#2eb82e", "#3399ff", "#b366ff"]
 RECURRENCE_OPTIONS = ["Every Day", "Even Days", "Odd Days"]
+STREAM_QUALITY_OPTIONS = ["Best", "1080p", "720p", "480p", "Audio Only"]
 
 DEFAULT_CONFIG = {
     "language": "English",
@@ -10,6 +11,11 @@ DEFAULT_CONFIG = {
     "dns": "",
     "segments": 8,
     "max_concurrent": 4,
+    "stream_quality": "Best",
+    # Captured downloads are added paused unless the user opts into autostart.
+    "capture_autostart": False,
+    # Empty means the user's Downloads folder; categories are created inside.
+    "download_dir": "",
     "start_with_os": False,
     "start_minimized": False,
     "close_to_tray": True,

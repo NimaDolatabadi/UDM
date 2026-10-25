@@ -9,16 +9,25 @@ import time
 from PyQt6.QtCore import QThread, pyqtSignal
 import requests
 
+from udm.filenames import claim_unique_path, remote_filename
+from udm.workers.formatting import format_duration, format_rate
+
 
 class DownloadError(Exception):
     """Report a remote response that cannot produce a valid download."""
 
 
 class DownloadWorker(QThread):
-    """Download one URL without blocking the Qt event loop."""
+    """Download one URL without blocking the Qt event loop.
+
+    With a ``router`` (a callable mapping a filename to its category
+    directory), the worker adopts the server-reported filename before writing
+    and emits ``relocated`` with the new destination path.
+    """
 
     progress = pyqtSignal(str, int, int, str, str, str)
     completed = pyqtSignal(str, bool, str)
+    relocated = pyqtSignal(str, str)
 
     def __init__(
         self,
@@ -28,6 +37,8 @@ class DownloadWorker(QThread):
         segments=8,
         proxy=None,
         session=None,
+        headers=None,
+        router=None,
     ):
         super().__init__()
         self.download_id = download_id
@@ -36,13 +47,18 @@ class DownloadWorker(QThread):
         self.segments = segments
         self.proxy = proxy
         self.session = session or requests.Session()
+        # Captured browser headers (cookies, referrer, user agent) override the
+        # generic defaults so session-bound links stay authorized.
+        self.headers = {"User-Agent": "Mozilla/5.0", **(headers or {})}
+        self.router = router
+        self._name_resolved = False
         self._paused = False
         self._cancelled = False
 
     def run(self):
         """Select segmented or streaming transfer based on server capabilities."""
         proxies = {"http": self.proxy, "https": self.proxy} if self.proxy else None
-        headers = {"User-Agent": "Mozilla/5.0"}
+        headers = dict(self.headers)
         file_size, accepts_ranges = self._inspect_remote(headers, proxies)
 
         if file_size and accepts_ranges and self.segments > 1:
@@ -60,6 +76,7 @@ class DownloadWorker(QThread):
                 timeout=10,
             )
             response.raise_for_status()
+            self._adopt_remote_name(response)
             file_size = max(0, int(response.headers.get("content-length", 0)))
             accepts_ranges = (
                 response.headers.get("accept-ranges", "none").lower() == "bytes"
@@ -78,6 +95,7 @@ class DownloadWorker(QThread):
                 timeout=15,
             )
             response.raise_for_status()
+            self._adopt_remote_name(response)
             self.save_path.parent.mkdir(parents=True, exist_ok=True)
             downloaded = 0
             started = time.monotonic()
@@ -144,7 +162,8 @@ class DownloadWorker(QThread):
             thread.join()
 
         if self._cancelled or errors:
-            for path in part_paths:
+            # Also drop an empty destination claimed by _adopt_remote_name.
+            for path in (*part_paths, self.save_path):
                 self._remove_partial(path)
             if errors:
                 self.completed.emit(self.download_id, False, str(errors[0]))
@@ -209,6 +228,23 @@ class DownloadWorker(QThread):
             logging.error("Segment download error: %s", error)
             errors.append(error)
 
+    def _adopt_remote_name(self, response):
+        # Links such as "download?id=1" reveal the real name (and therefore the
+        # category folder) only in the response, so re-route before writing.
+        if self.router is None or self._name_resolved:
+            return
+        self._name_resolved = True
+        final_url = getattr(response, "url", None) or self.url
+        name = remote_filename(final_url, response.headers, self.save_path.name)
+        if not name or name == self.save_path.name:
+            return
+        try:
+            self.save_path = claim_unique_path(self.router(name), name)
+        except OSError as error:
+            logging.warning("Keeping original destination: %s", error)
+            return
+        self.relocated.emit(self.download_id, str(self.save_path))
+
     def _wait_while_paused(self):
         while self._paused and not self._cancelled:
             self.msleep(100)
@@ -217,32 +253,15 @@ class DownloadWorker(QThread):
         elapsed = max(time.monotonic() - started, 0.001)
         rate = downloaded / elapsed
         remaining = max(total - downloaded, 0) if total else 0
-        eta = self._format_duration(remaining / rate) if total and rate else "--"
+        eta = format_duration(remaining / rate) if total and rate else "--"
         self.progress.emit(
             self.download_id,
             downloaded,
             total,
-            self._format_rate(rate),
+            format_rate(rate),
             eta,
             "Downloading",
         )
-
-    @staticmethod
-    def _format_rate(bytes_per_second):
-        units = ("B/s", "KB/s", "MB/s", "GB/s")
-        value = float(bytes_per_second)
-        for unit in units[:-1]:
-            if value < 1024:
-                return f"{value:.1f} {unit}"
-            value /= 1024
-        return f"{value:.1f} {units[-1]}"
-
-    @staticmethod
-    def _format_duration(seconds):
-        seconds = max(0, int(seconds))
-        hours, remainder = divmod(seconds, 3600)
-        minutes, seconds = divmod(remainder, 60)
-        return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
 
     @staticmethod
     def _remove_partial(path):

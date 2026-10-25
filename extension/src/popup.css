@@ -1,0 +1,140 @@
+/* Popup styling. Variables mirror the tokens in docs/design-system.md. */
+:root {
+  --bg-base: #f6f7f9;
+  --bg-raised: #ffffff;
+  --bg-sunken: #eceef1;
+  --border-subtle: #e1e4e8;
+  --border-strong: #c9cdd3;
+  --text-primary: #1c1e22;
+  --text-muted: #5c636e;
+  --text-disabled: #a6acb5;
+  --accent: #2f81f7;
+  --accent-hover: #4c94f8;
+  --accent-pressed: #1f6feb;
+  --accent-text: #ffffff;
+  --status-success: #2ea043;
+  --status-warning: #d29922;
+  --status-danger: #f85149;
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --control-md: 30px;
+  --font-caption: 11px;
+  --font-body: 13px;
+  --font-title: 15px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-base: #1c1e22;
+    --bg-raised: #26292e;
+    --bg-sunken: #16181b;
+    --border-subtle: #2f333a;
+    --border-strong: #3d424b;
+    --text-primary: #e6e8eb;
+    --text-muted: #9aa2ad;
+    --text-disabled: #5c636e;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  width: 360px;
+  margin: 0;
+  padding: var(--space-md);
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font: var(--font-body)/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.bar { display: flex; align-items: center; gap: var(--space-sm); }
+h1 { flex: 1; margin: 0; font-size: var(--font-title); font-weight: 500; }
+h2 { margin: 0; font-size: var(--font-body); font-weight: 600; color: var(--text-muted); }
+
+.status {
+  font-size: var(--font-caption);
+  padding: 2px var(--space-sm);
+  border-radius: var(--radius-sm);
+  background: var(--bg-sunken);
+  color: var(--text-muted);
+}
+.status.success, .message.success { color: var(--status-success); }
+.status.warning { color: var(--status-warning); }
+.status.danger, .message.danger { color: var(--status-danger); }
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  background: var(--bg-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+.card[hidden], [hidden] { display: none; }
+
+.toggle { display: flex; align-items: center; gap: var(--space-sm); cursor: pointer; }
+.toggle input { accent-color: var(--accent); width: 16px; height: 16px; margin: 0; }
+
+button {
+  height: var(--control-md);
+  padding: 0 var(--space-md);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-raised);
+  color: var(--text-primary);
+  font: inherit;
+  cursor: pointer;
+}
+button:hover { border-color: var(--border-strong); background: var(--bg-base); }
+button:disabled { color: var(--text-disabled); cursor: default; }
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+  font-weight: 600;
+}
+button.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+button.primary:active { background: var(--accent-pressed); }
+button.link {
+  height: auto;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--accent);
+  font-size: var(--font-caption);
+}
+
+.section-head { display: flex; justify-content: space-between; margin-bottom: var(--space-sm); }
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 240px;
+  overflow-y: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-sunken);
+}
+.list:empty { display: none; }
+.list li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.list li:last-child { border-bottom: none; }
+.text { flex: 1; min-width: 0; }
+.name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.meta, .muted, .message { color: var(--text-muted); font-size: var(--font-caption); }
+.muted, .message { margin: 0; }
+.message:empty { display: none; }

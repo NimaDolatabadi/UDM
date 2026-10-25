@@ -1,4 +1,4 @@
-"""Download queue behavior for the main window."""
+"""Download queue rows and worker lifecycle for the main window."""
 
 import os
 from urllib.parse import urlparse
@@ -11,15 +11,18 @@ from PyQt6.QtWidgets import (
     QTableWidgetItem,
 )
 
+from udm.capture import STREAM_KIND
 from udm.constants import DEFAULT_CONFIG, SCHEDULE_COLORS
 from udm.i18n import TRANSLATIONS
 from udm.network import create_http_session
 from udm.ui.download_roles import PATH_ROLE, SCHEDULE_ROLE, URL_ROLE
 from udm.ui.queue_runtime import QueueRuntimeController
-from udm.workers import DownloadWorker
+from udm.ui.window_queue_actions import QueueActionsController
+from udm.workers.download import DownloadWorker
+from udm.workers.stream import StreamWorker
 
 
-class DownloadController(QueueRuntimeController):
+class DownloadController(QueueActionsController, QueueRuntimeController):
     """Manage queue rows and their download workers."""
 
     def prompt_add_url(self):
@@ -28,18 +31,52 @@ class DownloadController(QueueRuntimeController):
         if accepted and url:
             self.add_to_downloads(url)
 
-    def add_to_downloads(self, url, start_paused=False, schedule_idx=None):
-        """Create a queue row and optionally start its worker immediately."""
+    def add_to_downloads(self, url, start_paused=False, schedule_idx=None, request=None):
+        """Create a file-download row and queue it for the scheduler.
+
+        ``request`` is an optional :class:`~udm.capture.CaptureRequest` whose
+        browser headers and suggested filename are used for the transfer.
+        Returns the new download identifier.
+        """
         url = url.strip()
-        filename = os.path.basename(urlparse(url).path) or "downloaded_file"
+        filename = (
+            (request.filename if request else "")
+            or os.path.basename(urlparse(url).path)
+            or "downloaded_file"
+        )
         target_dir = self.config_manager.get_category_path(filename)
         save_path = self._unique_save_path(target_dir, filename)
-        filename = os.path.basename(save_path)
-        row = self.downloads_tab.table.rowCount()
-        self.downloads_tab.table.insertRow(row)
-        download_id = f"dl_{os.urandom(6).hex()}"
+        return self._insert_row(
+            url,
+            os.path.basename(save_path),
+            save_path,
+            f"Saved to: {target_dir}",
+            start_paused,
+            schedule_idx,
+            request,
+        )
 
-        name = QTableWidgetItem(filename)
+    def add_stream(self, request, start_paused=False):
+        """Create a row resolved by yt-dlp for a page or stream manifest."""
+        target_dir = self.config_manager.get_category_path("stream.mp4")
+        return self._insert_row(
+            request.url,
+            request.display_name(),
+            target_dir,
+            f"Stream to: {target_dir}",
+            start_paused,
+            None,
+            request,
+        )
+
+    def _insert_row(
+        self, url, label, save_path, description, start_paused, schedule_idx, request
+    ):
+        table = self.downloads_tab.table
+        row = table.rowCount()
+        table.insertRow(row)
+        download_id = f"dl_{os.urandom(6).hex()}"
+        name = QTableWidgetItem(label)
         name.setData(Qt.ItemDataRole.UserRole, download_id)
         name.setData(URL_ROLE, url)
         name.setData(PATH_ROLE, save_path)
@@ -47,44 +84,67 @@ class DownloadController(QueueRuntimeController):
             color_index = schedule_idx % len(SCHEDULE_COLORS)
             name.setBackground(QBrush(QColor(SCHEDULE_COLORS[color_index])))
             name.setData(SCHEDULE_ROLE, schedule_idx)
-
-        table = self.downloads_tab.table
         table.setItem(row, 0, name)
         table.setItem(row, 1, QTableWidgetItem("0 B / --"))
         table.setItem(
-            row,
-            2,
-            QTableWidgetItem("Paused" if start_paused else "Queued"),
+            row, 2, QTableWidgetItem("Paused" if start_paused else "Queued")
         )
         table.setItem(row, 3, QTableWidgetItem("--"))
         table.setItem(row, 4, QTableWidgetItem("--"))
-        table.setItem(row, 5, QTableWidgetItem(f"Saved to: {target_dir}"))
+        table.setItem(row, 5, QTableWidgetItem(description))
+        if request is not None:
+            self.download_requests[download_id] = request
         self.pending_downloads[download_id] = (url, save_path)
         if start_paused:
             self.manually_paused.add(download_id)
         self.reconcile_download_queue()
+        return download_id
 
     def start_worker(self, download_id, url, save_path):
         """Create, connect, retain, and start one download worker."""
-        segments = int(self.config_manager.config.get("segments", 8))
-        proxy = self.config_manager.config.get("proxy", "").strip() or None
-        dns = self.config_manager.config.get("dns", "")
-        worker = DownloadWorker(
-            download_id,
-            url,
-            save_path,
-            segments=segments,
-            proxy=proxy,
-            session=create_http_session(dns),
-        )
+        worker = self._create_worker(download_id, url, save_path)
         worker.progress.connect(self.on_worker_progress)
         worker.completed.connect(self.on_worker_completed)
+        if isinstance(worker, StreamWorker):
+            worker.renamed.connect(self.on_worker_renamed)
+        else:
+            worker.relocated.connect(self.on_worker_relocated)
         worker.finished.connect(
             lambda value=download_id: self._worker_finished(value)
         )
         self.active_workers[download_id] = worker
         self.pending_downloads.pop(download_id, None)
         worker.start()
+
+    def _create_worker(self, download_id, url, save_path):
+        config = self.config_manager.config
+        segments = int(config.get("segments", 8))
+        proxy = config.get("proxy", "").strip() or None
+        request = self.download_requests.get(download_id)
+        headers = request.headers() if request else None
+        if request is not None and request.kind == STREAM_KIND:
+            return StreamWorker(
+                download_id,
+                url,
+                save_path,
+                headers=request.stream_headers(),
+                quality=request.quality
+                or config.get("stream_quality", DEFAULT_CONFIG["stream_quality"]),
+                proxy=proxy,
+                fragments=segments,
+                cookie_jar=request.cookie_jar,
+                cookie_header=request.cookies,
+            )
+        return DownloadWorker(
+            download_id,
+            url,
+            save_path,
+            segments=segments,
+            proxy=proxy,
+            session=create_http_session(config.get("dns", "")),
+            headers=headers,
+            router=self.config_manager.get_category_path,
+        )
 
     def on_worker_progress(
         self,
@@ -117,6 +177,27 @@ class DownloadController(QueueRuntimeController):
         table.setItem(row, 3, QTableWidgetItem(time_left))
         table.setItem(row, 4, QTableWidgetItem(speed))
 
+    def on_worker_renamed(self, download_id, title):
+        """Replace a stream row's placeholder label with the media title."""
+        row = self.find_download_row(download_id)
+        item = self.downloads_tab.table.item(row, 0) if row is not None else None
+        if item is not None:
+            item.setText(title)
+
+    def on_worker_relocated(self, download_id, save_path):
+        """Show the server-reported filename and its category folder."""
+        row = self.find_download_row(download_id)
+        if row is None:
+            return
+        table = self.downloads_tab.table
+        item = table.item(row, 0)
+        if item is not None:
+            item.setText(os.path.basename(save_path))
+            item.setData(PATH_ROLE, save_path)
+        table.setItem(
+            row, 5, QTableWidgetItem(f"Saved to: {os.path.dirname(save_path)}")
+        )
+
     def on_worker_completed(self, download_id, success, message):
         """Finalize a queue row and release its completed worker."""
         row = self.find_download_row(download_id)
@@ -133,6 +214,8 @@ class DownloadController(QueueRuntimeController):
             # A completion signal is delivered just before QThread finishes;
             # retain ownership until its finished signal reaches the UI thread.
             self.cancelling_workers[download_id] = worker
+        if success:
+            self.download_requests.pop(download_id, None)
         self.manually_paused.discard(download_id)
         self.reconcile_download_queue()
 
@@ -151,107 +234,6 @@ class DownloadController(QueueRuntimeController):
             if item and item.data(Qt.ItemDataRole.UserRole) == download_id:
                 return row
         return None
-
-    def get_active_table(self):
-        """Return the queue table controlled by shared toolbar actions."""
-        if self.tabs.currentWidget() is self.downloads_tab:
-            return self.downloads_tab.table
-        if self.tabs.currentWidget() is self.torrents_tab:
-            return self.torrents_tab.table
-        return None
-
-    def get_selected_rows_and_ids(self):
-        """Return identifiers and row locations for selected queue entries."""
-        table = self.get_active_table()
-        if table is None:
-            return []
-        return [
-            (
-                table.item(index.row(), 0).data(Qt.ItemDataRole.UserRole),
-                index.row(),
-                table,
-            )
-            for index in table.selectionModel().selectedRows()
-            if table.item(index.row(), 0)
-        ]
-
-    def pause_selected(self):
-        """Pause selected workers and update their visible queue state."""
-        for download_id, row, table in self.get_selected_rows_and_ids():
-            if table is not self.downloads_tab.table:
-                continue
-            worker = self.active_workers.get(download_id)
-            if worker:
-                worker.pause()
-            self.manually_paused.add(download_id)
-            table.setItem(row, 2, QTableWidgetItem("Paused"))
-
-    def resume_selected(self):
-        """Resume workers or start queue entries that were initially paused."""
-        for download_id, row, table in self.get_selected_rows_and_ids():
-            if table is not self.downloads_tab.table:
-                continue
-            status_item = table.item(row, 2)
-            status = status_item.text() if status_item else ""
-            if status == "Completed" or status.startswith("Failed"):
-                continue
-            worker = self.active_workers.get(download_id)
-            self.manually_paused.discard(download_id)
-            if worker:
-                worker.resume()
-            elif download_id not in self.pending_downloads:
-                # A row added as paused has no worker yet; its URL and path roles
-                # provide everything needed to start it on the first Resume.
-                item = table.item(row, 0)
-                self.pending_downloads[download_id] = (
-                    item.data(URL_ROLE),
-                    item.data(PATH_ROLE),
-                )
-            table.setItem(row, 2, QTableWidgetItem("Queued"))
-        self.reconcile_download_queue()
-
-    def stop_all(self):
-        """Pause every active download worker."""
-        for download_id, worker in list(self.active_workers.items()):
-            worker.pause()
-            self.manually_paused.add(download_id)
-            row = self.find_download_row(download_id)
-            if row is not None:
-                self.downloads_tab.table.setItem(
-                    row,
-                    2,
-                    QTableWidgetItem("Paused"),
-                )
-
-    def delete_selected(self):
-        """Cancel and remove all selected queue entries."""
-        selections = sorted(
-            self.get_selected_rows_and_ids(),
-            key=lambda selection: selection[1],
-            reverse=True,
-        )
-        # Removing bottom-up keeps remaining row indexes valid during the loop.
-        for download_id, row, table in selections:
-            worker = self.active_workers.pop(download_id, None)
-            if worker:
-                worker.cancel()
-                self.cancelling_workers[download_id] = worker
-            self.pending_downloads.pop(download_id, None)
-            self.manually_paused.discard(download_id)
-            table.removeRow(row)
-        self.reconcile_download_queue()
-
-    def delete_completed(self):
-        """Remove completed rows from download and torrent tables."""
-        for table in (self.downloads_tab.table, self.torrents_tab.table):
-            completed = [
-                row
-                for row in range(table.rowCount())
-                if table.item(row, 2)
-                and table.item(row, 2).text() == "Completed"
-            ]
-            for row in reversed(completed):
-                table.removeRow(row)
 
     def show_download_context_menu(self, position):
         """Show schedule assignments for the selected download rows."""

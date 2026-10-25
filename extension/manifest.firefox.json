@@ -1,0 +1,11 @@
+{
+  "background": {
+    "scripts": ["common.js", "media.js", "background.js"]
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "udm-capture@nimadolatabadi.github.io",
+      "strict_min_version": "121.0"
+    }
+  }
+}

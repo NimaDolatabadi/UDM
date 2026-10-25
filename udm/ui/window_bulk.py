@@ -3,7 +3,7 @@
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QMessageBox, QTableWidgetItem
 
-from udm.workers import BulkSpiderWorker
+from udm.workers.spiders import BulkSpiderWorker
 
 
 class BulkController:

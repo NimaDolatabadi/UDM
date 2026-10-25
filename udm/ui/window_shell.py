@@ -1,7 +1,5 @@
 """Window construction, tray behavior, and application lifecycle."""
 
-from pathlib import Path
-
 from PyQt6.QtCore import QTimer, Qt
 from PyQt6.QtGui import QAction, QIcon
 from PyQt6.QtWidgets import (
@@ -14,6 +12,7 @@ from PyQt6.QtWidgets import (
     QTreeWidgetItem,
 )
 
+from udm import paths
 from udm.constants import DOWNLOAD_EXTENSIONS
 from udm.ui.dev_reload import install_style_hot_reload
 from udm.ui.tabs import BulkTab, DownloadsTab, GrabberTab, TorrentsTab
@@ -40,7 +39,7 @@ class WindowShell:
         self._style_hot_reload = install_style_hot_reload(self)
 
     def _setup_icon_and_tray(self):
-        logo_path = Path(__file__).resolve().parents[2] / "logo.png"
+        logo_path = paths.resource_path("logo.png")
         if not logo_path.exists():
             return
         icon = QIcon(str(logo_path))
@@ -195,6 +194,7 @@ class WindowShell:
             event.ignore()
             return
         self.shutdown_workers()
+        self.stop_bridge()
         if self.tray_icon:
             self.tray_icon.hide()
         event.accept()
@@ -218,6 +218,7 @@ class WindowShell:
     def quit_app(self):
         """Stop background work, hide the tray icon, and exit Qt."""
         self.shutdown_workers()
+        self.stop_bridge()
         if self.tray_icon:
             self.tray_icon.hide()
         QApplication.quit()

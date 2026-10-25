@@ -3,6 +3,65 @@
 This file records project changes in reverse chronological order. Every entry
 corresponds to the canonical version in `VERSION` at the time of the change.
 
+## 2026-10-25 - 0.6.0 - Minor
+
+- Added the UDM Capture browser extension (`extension/`) for Chromium browsers
+  and Firefox from one Manifest V3 source: browser-download capture with
+  cookies, referrer, and user agent; HLS, DASH, and media-file detection per
+  tab; context menus; a popup; and an IDM-style on-video Download button with a
+  media panel rendered in a closed Shadow DOM.
+- Added the `udm.bridge` package: native-messaging framing, a Qt-free native
+  host that relays requests over a local socket and launches UDM when closed,
+  a Qt socket server that also enforces a single running instance, browser
+  definitions, per-engine extension assembly with a fixed Chromium extension
+  ID, and a per-browser installer.
+- Added Options > Browser with a browser selector, Install Extension action,
+  and stream quality setting (`stream_quality`, default Best).
+- Added `StreamWorker`, which downloads pages and stream manifests through
+  yt-dlp with captured headers, merges with the imageio-ffmpeg binary, supports
+  pause and cancel, and removes partial and fragment files on cancel.
+  `DownloadWorker` now accepts captured request headers.
+- Added `udm.paths`: settings and logs moved to the per-user data directory
+  (`~/Library/Application Support/UDM`), fixing writes to `/` from login items
+  and app bundles; a legacy working-directory config is copied once. Login
+  items register the bundle executable without a script argument when frozen.
+- Changed the default download location from `~/Downloads/UDM/<category>` to
+  `~/Downloads/<category>`, reusing existing category folders, and added a
+  Download folder setting (`download_dir`, empty for Downloads) with a Browse
+  button in Options > General.
+- Fixed files from links without a file extension (for example
+  `download?id=1` or redirects) being saved to `Others`: `DownloadWorker` now
+  adopts the server-reported filename and re-routes to its category, such as
+  `Programs/Mac` for a `.dmg`, updating the queue row. Added `udm.filenames`
+  and a shared `udm.workers.formatting` module.
+- Added quality selection: the on-video panel and popup list the qualities
+  yt-dlp finds (heights, Audio only, approximate sizes), answered by the native
+  host through the new Qt-free `udm.workers.format_probe`; requests carry the
+  chosen `quality`, which overrides the default.
+- Captured downloads now join the list paused instead of starting, with an
+  opt-in Start captured downloads immediately setting (`capture_autostart`).
+- Fixed YouTube downloads failing with "Requested format is not available" by
+  bundling the Deno runtime and `yt-dlp-ejs` for yt-dlp's JavaScript
+  challenges; stream downloads prefer H.264 and AAC so files play in QuickTime.
+- HTTPS now uses the macOS trust store through `truststore` (`udm.tls`), and
+  browser cookies reach yt-dlp as scoped cookie records (`cookieJar`, loaded by
+  `udm.workers.ytdlp_cookies`) instead of a header, removing its warnings.
+- Made `udm.workers` exports lazy so the native host imports no Qt.
+- Added macOS packaging (`packaging/macos/`) that builds `UDM.app` and
+  `dist/UDM-<version>.dmg`, bundling the extension, yt-dlp, and FFmpeg.
+- Split queue actions out of `window_downloads.py` and shared test fixtures out
+  of `tests/test_ui.py` to keep files under 300 lines; synchronized
+  `udm.__version__` with `VERSION` and added a regression test for drift.
+- Documented the integration and packaging in `docs/browser-integration.md` and
+  `docs/packaging.md`, and refreshed the architecture, design-system, and
+  README documentation, including correcting stale module references. The
+  README now covers per-browser extension loading, extension usage (quality
+  selection, paused captures, category routing), the real clone URL, and the
+  added dependencies.
+- Added tests for capture validation, paths, bridge framing and transport, the
+  native host, the socket server, installer output, extension assembly, the
+  stream worker, the Browser page, and capture handling (see the test suite for current coverage).
+
 ## 2026-10-25 - 0.5.1 - Patch
 
 - Stopped tracking the per-user `udm_config.json`; the application creates it

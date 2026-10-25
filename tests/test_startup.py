@@ -77,6 +77,14 @@ class StartupTests(unittest.TestCase):
             _sync_macos_startup(False, "/new-python", "/app.py", path)
             self.assertFalse(path.exists())
 
+    def test_frozen_app_registers_executable_without_script(self):
+        plist = _macos_plist_content("/Applications/UDM.app/Contents/MacOS/UDM", None)
+        self.assertIn(b"<string>/Applications/UDM.app/Contents/MacOS/UDM</string>", plist)
+        self.assertEqual(plist.count(b"<string>"), 2)
+        registry = FakeWinreg()
+        _sync_windows_startup(True, "C:/UDM/UDM.exe", None, winreg_module=registry)
+        self.assertEqual(registry.set_calls, [(WINDOWS_VALUE_NAME, '"C:/UDM/UDM.exe"')])
+
     def test_windows_matching_command_is_not_rewritten(self):
         registry = FakeWinreg('"/python" "/app.py"')
         _sync_windows_startup(

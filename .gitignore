@@ -4,3 +4,5 @@ __pycache__/
 download_manager.log
 .DS_Store
 udm_config.json
+build/
+dist/

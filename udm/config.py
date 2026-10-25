@@ -6,15 +6,33 @@ import logging
 from pathlib import Path
 
 from udm.constants import DEFAULT_CONFIG
+from udm.paths import resolve_config_path
+
+
+def default_download_dir():
+    """Return the user's Downloads folder."""
+    return Path.home() / "Downloads"
 
 
 class ConfigManager:
     """Load, merge, save, and query application configuration."""
 
-    def __init__(self, config_path="udm_config.json", download_root=None):
-        self.config_path = Path(config_path)
-        self.download_root = Path(download_root or Path.home() / "Downloads" / "UDM")
+    def __init__(self, config_path=None, download_root=None):
+        self.config_path = Path(config_path or resolve_config_path())
+        self._download_root_override = Path(download_root) if download_root else None
         self.config = self.load_config()
+
+    @property
+    def download_root(self):
+        """Return the folder that holds the category subfolders.
+
+        An explicit constructor argument wins (used by tests); otherwise the
+        ``download_dir`` setting, falling back to the user's Downloads folder.
+        """
+        if self._download_root_override is not None:
+            return self._download_root_override
+        configured = str(self.config.get("download_dir") or "").strip()
+        return Path(configured).expanduser() if configured else default_download_dir()
 
     def load_config(self):
         """Load saved settings and merge them with current defaults."""

@@ -7,7 +7,7 @@ here, and new interface work must reference the named tokens defined below rathe
 than raw values.
 
 The application is built with PyQt6 and styled through Qt Style Sheets (QSS),
-centralized today in `udm/ui/styles.py`. QSS behaves like a restricted dialect of
+centralized in the `udm/ui/theme/` package. QSS behaves like a restricted dialect of
 CSS. This document describes the intended system; the implementation follows the
 same structure so that any widget added later inherits the system automatically.
 
@@ -89,8 +89,8 @@ retains meaning.
 ### Color: Status
 
 Status colors are reserved for meaning (state, progress, alerts), never for
-decoration. These align with the existing `SCHEDULE_COLORS` in
-`udm/constants.py`.
+decoration. Schedule marker colors (`SCHEDULE_COLORS` in `udm/constants.py`)
+are a separate user-facing palette and are not status tokens.
 
 | Token            | Meaning              | Value     |
 | ---------------- | -------------------- | --------- |
@@ -324,6 +324,28 @@ Modal layouts:
   header, and each row shows the schedule name and a plain-language summary.
   Detailed field editing opens in a separate `ScheduleEditorDialog`. Column 0
   stretches and the summary wraps, so the table never scrolls sideways.
+
+- The Options dialog's Browser page (`udm/ui/options_browser_page.py`) holds a
+  browser selector, a video-quality selector, a secondary Install Extension
+  button, and a muted, word-wrapped status label that lists the remaining
+  steps. Shared page and form helpers live in `udm/ui/settings_layout.py`.
+
+Browser extension surfaces:
+
+- The extension popup and the on-video button are web UI and cannot read the
+  Qt theme. They mirror the tokens as CSS custom properties with matching names
+  (`--bg-base`, `--accent`, `--space-sm`, and so on). The popup follows the
+  operating system's light or dark preference through `prefers-color-scheme`.
+- The on-video button always uses the Refined Dark surfaces, because it sits on
+  arbitrary video frames where a light surface would glare. It is a primary
+  accent button at control height `md` with the line `download` glyph, plus a
+  compact `sm` close control; its panel uses `bg.base` with `bg.raised` hover
+  rows and `status.success` or `status.danger` result text.
+- Quality choices reuse the panel and list rows: label in `text.primary`,
+  container and size in `text.muted` caption text, and a compact accent
+  "< Back" row above them. In the popup they appear in a `card` with a Cancel
+  link, and each row's action is a secondary Add button.
+- The toolbar badge uses `accent`.
 
 Development hot reload:
 

@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>UDM Capture</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header class="bar">
+    <img src="icons/icon-32.png" alt="" width="20" height="20">
+    <h1>UDM Capture</h1>
+    <span id="status" class="status">Checking...</span>
+  </header>
+
+  <section id="permission" class="card" hidden>
+    <p class="muted">UDM Capture needs access to websites to detect videos.</p>
+    <button id="grant" type="button">Allow access</button>
+  </section>
+
+  <section class="card">
+    <label class="toggle"><input type="checkbox" id="capture"> Capture browser downloads</label>
+    <label class="toggle"><input type="checkbox" id="overlay"> Show download button on videos</label>
+  </section>
+
+  <button id="sendPage" class="primary" type="button">Download video on this page</button>
+
+  <section id="qualityBox" class="card" hidden>
+    <div class="section-head">
+      <h2 id="qualityTitle">Choose a quality</h2>
+      <button id="qualityClose" class="link" type="button">Cancel</button>
+    </div>
+    <ul id="qualityList" class="list"></ul>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <h2>Detected media</h2>
+      <button id="clear" class="link" type="button">Clear</button>
+    </div>
+    <ul id="media" class="list"></ul>
+    <p id="empty" class="muted">Play a video to detect its streams here.</p>
+  </section>
+
+  <p id="message" class="message" role="status"></p>
+
+  <script src="common.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

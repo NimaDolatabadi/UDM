@@ -7,10 +7,9 @@ from PyQt6.QtWidgets import (
     QComboBox,
     QDialog,
     QDialogButtonBox,
-    QFormLayout,
+    QFileDialog,
     QHeaderView,
     QHBoxLayout,
-    QLabel,
     QLineEdit,
     QListWidget,
     QPushButton,
@@ -19,15 +18,15 @@ from PyQt6.QtWidgets import (
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
-    QWidget,
 )
 
+from udm.config import default_download_dir
 from udm.constants import DEFAULT_CONFIG
 from udm.i18n import TRANSLATIONS
-from udm.ui.theme import DEFAULT_THEME, THEME_OPTIONS, theme_for
-
-# Spacing scale is theme-independent.
-_SCALE = theme_for(None)
+from udm.ui.options_browser_page import BrowserIntegrationPage
+from udm.ui.settings_layout import SCALE as _SCALE
+from udm.ui.settings_layout import settings_form, settings_page
+from udm.ui.theme import DEFAULT_THEME, THEME_OPTIONS
 
 
 class OptionsDialog(QDialog):
@@ -52,12 +51,14 @@ class OptionsDialog(QDialog):
         self.nav = QListWidget()
         self.nav.setObjectName("settingsNav")
         self.nav.setFixedWidth(170)
-        self.nav.addItems(["General", "Network", "Categories"])
+        self.nav.addItems(["General", "Network", "Categories", "Browser"])
 
         self.pages = QStackedWidget()
         self.pages.addWidget(self._build_general_tab(config))
         self.pages.addWidget(self._build_network_tab(config))
         self.pages.addWidget(self._build_categories_tab(config))
+        self.browser_page = BrowserIntegrationPage(config)
+        self.pages.addWidget(self.browser_page)
         self.nav.currentRowChanged.connect(self.pages.setCurrentIndex)
         self.nav.setCurrentRow(0)
 
@@ -78,23 +79,9 @@ class OptionsDialog(QDialog):
         footer.addWidget(buttons)
         layout.addLayout(footer)
 
-    @staticmethod
-    def _page(title):
-        """Return a settings page widget and its content layout with a heading."""
-        page = QWidget()
-        outer = QVBoxLayout(page)
-        outer.setContentsMargins(
-            _SCALE.space_lg, _SCALE.space_lg, _SCALE.space_lg, _SCALE.space_lg
-        )
-        outer.setSpacing(_SCALE.space_md)
-        heading = QLabel(title)
-        heading.setProperty("heading", True)
-        outer.addWidget(heading)
-        return page, outer
-
     def _build_general_tab(self, config):
-        page, outer = self._page("General")
-        form = self._form()
+        page, outer = settings_page("General")
+        form = settings_form()
         self.theme = QComboBox()
         self.theme.setMinimumWidth(180)
         self.theme.addItems(THEME_OPTIONS)
@@ -105,6 +92,7 @@ class OptionsDialog(QDialog):
         self.language.setCurrentText(config.get("language", "English"))
         form.addRow("Theme:", self.theme)
         form.addRow("Interface Language:", self.language)
+        form.addRow("Download folder:", self._download_dir_row(config))
         outer.addLayout(form)
 
         self.start_with_os = self._check(
@@ -139,8 +127,8 @@ class OptionsDialog(QDialog):
         return page
 
     def _build_network_tab(self, config):
-        page, outer = self._page("Network")
-        form = self._form()
+        page, outer = settings_page("Network")
+        form = settings_form()
         self.proxy = QLineEdit(config.get("proxy", ""))
         self.proxy.setPlaceholderText("http://user:password@proxy.server:port")
         self.dns = QLineEdit(config.get("dns", ""))
@@ -162,7 +150,7 @@ class OptionsDialog(QDialog):
         return page
 
     def _build_categories_tab(self, config):
-        page, layout = self._page("Categories")
+        page, layout = settings_page("Categories")
         self.categories = QTableWidget(0, 2)
         self.categories.setHorizontalHeaderLabels(
             ["Category Path", "Extensions (comma separated)"]
@@ -192,21 +180,29 @@ class OptionsDialog(QDialog):
         return page
 
     @staticmethod
-    def _form():
-        """Return a form layout with fields that grow to fill the page width."""
-        form = QFormLayout()
-        form.setFieldGrowthPolicy(
-            QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow
-        )
-        form.setHorizontalSpacing(_SCALE.space_md)
-        form.setVerticalSpacing(_SCALE.space_md)
-        return form
-
-    @staticmethod
     def _check(label, checked):
         checkbox = QCheckBox(label)
         checkbox.setChecked(checked)
         return checkbox
+
+    def _download_dir_row(self, config):
+        """Return a folder field with a Browse button; empty means Downloads."""
+        self.download_dir = QLineEdit(config.get("download_dir", ""))
+        self.download_dir.setPlaceholderText(str(default_download_dir()))
+        browse = QPushButton("Browse...")
+        browse.clicked.connect(self.choose_download_dir)
+        row = QHBoxLayout()
+        row.setSpacing(_SCALE.space_sm)
+        row.addWidget(self.download_dir, 1)
+        row.addWidget(browse)
+        return row
+
+    def choose_download_dir(self):
+        """Let the user pick the folder that holds the category folders."""
+        start = self.download_dir.text().strip() or str(default_download_dir())
+        chosen = QFileDialog.getExistingDirectory(self, "Download Folder", start)
+        if chosen:
+            self.download_dir.setText(chosen)
 
     def add_category(self, category, extensions):
         """Append an editable category and extension mapping."""
@@ -245,8 +241,10 @@ class OptionsDialog(QDialog):
                 "proxy": self.proxy.text().strip(),
                 "dns": self.dns.text().strip(),
                 "segments": self.segments.value(),
+                "download_dir": self.download_dir.text().strip(),
                 "max_concurrent": self.max_concurrent.value(),
                 "categories": categories,
+                **self.browser_page.values(),
             }
         )
         return updated

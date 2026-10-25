@@ -5,15 +5,22 @@ from pathlib import Path
 import plistlib
 import sys
 
+from udm.paths import app_command
+
 STARTUP_LABEL = "com.udm.manager"
 WINDOWS_RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
 WINDOWS_VALUE_NAME = "UDMManager"
 
 
 def sync_system_startup(enable, executable=None, script_path=None):
-    """Reconcile the current user's startup entry with the desired command."""
-    executable = executable or sys.executable
-    script_path = script_path or str(Path(sys.argv[0]).resolve())
+    """Reconcile the current user's startup entry with the desired command.
+
+    A bundled app is its own executable, so it registers no script argument.
+    """
+    if executable is None:
+        command = app_command()
+        executable = command[0]
+        script_path = command[1] if len(command) > 1 else None
 
     if sys.platform == "darwin":
         _sync_macos_startup(enable, executable, script_path)
@@ -30,7 +37,7 @@ def _macos_plist_content(executable, script_path):
     return plistlib.dumps(
         {
             "Label": STARTUP_LABEL,
-            "ProgramArguments": [executable, script_path],
+            "ProgramArguments": [executable, *([script_path] if script_path else [])],
             "RunAtLoad": True,
         },
         fmt=plistlib.FMT_XML,
@@ -70,7 +77,7 @@ def _sync_windows_startup(
     if winreg_module is None:
         import winreg as winreg_module
 
-    desired = f'"{executable}" "{script_path}"'
+    desired = f'"{executable}"' + (f' "{script_path}"' if script_path else "")
     access = winreg_module.KEY_READ | winreg_module.KEY_SET_VALUE
     try:
         if enable:

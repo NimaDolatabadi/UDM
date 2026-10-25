@@ -25,33 +25,54 @@ The `udm` package separates domain data, services, workers, and user interface
 components:
 
 ```text
-MACDM.py
+MACDM.py                  entry point; dispatches --native-messaging-host
+extension/                browser extension source (see browser-integration.md)
+packaging/macos/          PyInstaller spec and DMG build script
 udm/
-  __init__.py
-  app.py
-  config.py
-  constants.py
-  network.py
-  scheduling.py
-  startup.py
+  __init__.py             package version
+  app.py                  Qt application, single instance, bridge start
+  capture.py              validated browser capture requests
+  config.py               settings persistence and category routing
+  constants.py            defaults and fixed choices
+  filenames.py            server filenames and unique destination paths
+  network.py              HTTP sessions with custom DNS
+  paths.py                data, log, socket, resource paths; launch commands
+  scheduling.py           schedule windows and limits
+  startup.py              login-item registration
+  bridge/
+    protocol.py           native-messaging framing and socket JSON lines
+    native_host.py        browser-launched relay to the app
+    server.py             Qt local-socket server
+    browsers.py           supported browsers and host directories
+    extension_build.py    per-engine extension assembly
+    installer.py          per-browser installation
+  i18n/                   translation catalogs
   workers/
-    __init__.py
-    download.py
-    spiders.py
+    download.py           segmented and streaming HTTP downloads
+    formatting.py         transfer rate and duration text
+    spiders.py            page and recursive discovery
+    stream.py             yt-dlp stream and page downloads
+    ytdlp_options.py      yt-dlp option construction
   ui/
-    __init__.py
-    icons.py
-    download_roles.py
-    options_dialog.py
-    queue_runtime.py
-    scheduler_dialog.py
-    styles.py
-    tabs.py
-    main_window.py
-    window_bulk.py
-    window_downloads.py
-    window_grabber.py
-    window_shell.py
+    main_window.py        concrete window composed from mixins
+    window_shell.py       chrome, tray, lifecycle
+    window_actions.py     toolbar, translation, dialogs
+    window_theme.py       theme application
+    window_downloads.py   queue rows and worker lifecycle
+    window_queue_actions.py  pause, resume, stop, delete
+    window_bridge.py      extension request handling
+    window_grabber.py     single-page discovery
+    window_bulk.py        recursive discovery
+    queue_runtime.py      schedule and concurrency admission
+    options_dialog.py     settings dialog
+    options_browser_page.py  Browser settings page
+    settings_layout.py    shared settings layout helpers
+    scheduler_dialog.py   schedule list
+    schedule_editor.py    single schedule editor
+    tabs.py               main tab widgets
+    download_roles.py     table data roles
+    dev_reload.py         development style reload
+    theme/                design tokens, stylesheet, glyphs
 tests/
 ```
 
@@ -62,9 +83,12 @@ continue to work.
 
 ### Configuration and Constants
 
-`udm.constants` contains immutable defaults, schedule choices, colors, and
-translations. `udm.config.ConfigManager` owns configuration merging, persistence,
-and category-path selection. It has no Qt dependency.
+`udm.constants` contains immutable defaults and fixed choices; translations
+live in `udm.i18n`. `udm.config.ConfigManager` owns configuration merging,
+persistence, and category-path selection. `udm.paths` resolves the per-user data
+directory (`~/Library/Application Support/UDM` on macOS), log and socket paths,
+bundled resources, and the command that launches the app from source or from a
+PyInstaller bundle. None of these modules depend on Qt.
 
 ### Platform Service
 
@@ -88,6 +112,15 @@ and segmented file assembly. A segmented response must be HTTP 206 with the
 requested `Content-Range`, every part must have its expected size, and the
 assembled file must match the advertised total. `udm.workers.spiders` owns
 single-page media discovery and same-domain recursive discovery.
+`udm.workers.stream` runs yt-dlp for captured pages and HLS or DASH manifests,
+merging with FFmpeg, and reports progress through the same signals.
+
+Before writing, `DownloadWorker` adopts the server-reported filename
+(`Content-Disposition`, then the post-redirect URL, then an extension inferred
+from `Content-Type`) and, when it differs from the provisional name derived
+from the link, re-routes the transfer to that name's category folder and emits
+`relocated`. The new destination is claimed by creating it atomically, so
+concurrent downloads of the same file receive distinct names.
 
 Workers communicate through Qt signals. They do not directly modify widgets.
 
@@ -118,7 +151,16 @@ The concrete main window composes focused mixins:
 - downloads: queue rows, workers, selection, pause, resume, and deletion;
 - queue runtime: schedule-window enforcement and concurrency-limited admission;
 - grabber: single-page discovery, filtering, selection, and transfer;
-- bulk: recursive discovery, progress, cancellation, and transfer.
+- bulk: recursive discovery, progress, cancellation, and transfer;
+- queue actions: pause, resume, stop, and delete for selected rows;
+- bridge: browser-extension requests and window focus requests.
+
+### Browser Bridge
+
+`udm.bridge` connects the browser extension to the app. The browser starts the
+native host, which relays each request over a local socket to the
+`BridgeServer` owned by the running window, launching UDM when needed. The same
+socket enforces a single running instance. See `docs/browser-integration.md`.
 
 The split follows behavior boundaries while keeping the shared main-window state
 explicit. UI construction helpers live in `udm.ui.tabs`.
@@ -127,8 +169,9 @@ explicit. UI construction helpers live in `udm.ui.tabs`.
 
 ```text
 entry point -> application -> main window -> dialogs/tabs/workers/services
-                                      |
-                                      -> configuration -> constants
+     |                                |
+     |                                -> configuration -> paths, constants
+     -> native host -> bridge protocol, paths   (no Qt)
 ```
 
 Constants and configuration do not import UI modules. Workers do not import the
@@ -146,3 +189,8 @@ lower-level modules reusable and prevents circular imports.
   application shutdown.
 - Launch the compatibility entry point in an offscreen smoke test and confirm it
   remains alive until intentionally closed.
+- Test bridge framing, the native host, the socket server, installer output,
+  extension assembly, capture validation, and the stream worker with a fake
+  yt-dlp downloader.
+- Before a release, build the DMG and exercise the bundled native host and
+  single-instance handoff (see `docs/packaging.md`).

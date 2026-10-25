@@ -5,6 +5,7 @@ from PyQt6.QtWidgets import QMainWindow
 from udm.config import ConfigManager
 from udm.startup import sync_system_startup
 from udm.ui.window_actions import WindowActions
+from udm.ui.window_bridge import BridgeController
 from udm.ui.window_bulk import BulkController
 from udm.ui.window_downloads import DownloadController
 from udm.ui.window_grabber import GrabberController
@@ -14,6 +15,7 @@ from udm.ui.window_theme import ThemeController
 
 class MainWindow(
     WindowActions,
+    BridgeController,
     BulkController,
     GrabberController,
     DownloadController,
@@ -29,6 +31,9 @@ class MainWindow(
         self.active_workers = {}
         self.cancelling_workers = {}
         self.pending_downloads = {}
+        # Captured browser requests keyed by download identifier.
+        self.download_requests = {}
+        self.bridge_server = None
         self.manually_paused = set()
         self.bulk_spider = None
         self.spider = None

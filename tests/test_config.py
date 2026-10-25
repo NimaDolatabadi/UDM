@@ -42,6 +42,17 @@ class ConfigManagerTests(unittest.TestCase):
             self.assertTrue(pdf_path.is_dir())
             self.assertTrue(unknown_path.is_dir())
 
+    def test_download_root_defaults_to_downloads_and_follows_setting(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            manager = ConfigManager(root / "config.json")
+            self.assertEqual(manager.config["download_dir"], "")
+            self.assertEqual(manager.download_root, Path.home() / "Downloads")
+            manager.config["download_dir"] = str(root / "custom")
+            target = Path(manager.get_category_path("song.mp3"))
+            self.assertEqual(target, root / "custom" / "Music")
+            self.assertTrue(target.is_dir())
+
 
 if __name__ == "__main__":
     unittest.main()

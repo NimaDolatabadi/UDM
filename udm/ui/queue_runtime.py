@@ -1,11 +1,10 @@
 """Runtime admission policy for scheduled download queues."""
 
-from pathlib import Path
-
 from PyQt6.QtCore import QTimer, Qt
 from PyQt6.QtWidgets import QTableWidgetItem
 
 from udm.constants import DEFAULT_CONFIG
+from udm.filenames import unique_path
 from udm.scheduling import schedule_is_open, schedule_limit
 from udm.ui.download_roles import PATH_ROLE, SCHEDULE_ROLE
 
@@ -102,14 +101,7 @@ class QueueRuntimeController:
             for row in range(self.downloads_tab.table.rowCount())
             if self.downloads_tab.table.item(row, 0)
         }
-        candidate = Path(target_dir) / filename
-        counter = 1
-        while str(candidate) in reserved or candidate.exists():
-            candidate = candidate.with_name(
-                f"{candidate.stem} ({counter}){candidate.suffix}"
-            )
-            counter += 1
-        return str(candidate)
+        return str(unique_path(target_dir, filename, reserved))
 
     @staticmethod
     def _format_size(byte_count):

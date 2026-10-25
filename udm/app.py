@@ -6,6 +6,10 @@ import sys
 
 from PyQt6.QtWidgets import QApplication
 
+from udm import paths
+from udm.bridge.protocol import BridgeError, send_to_app
+from udm.bridge.server import instance_is_running
+from udm.tls import use_system_trust
 from udm.ui.main_window import MainWindow
 
 
@@ -27,11 +31,19 @@ def create_application(argv=None, config_manager=None, sync_startup=True):
 
 
 def main():
-    """Run the desktop application."""
-    logging.basicConfig(
-        filename="download_manager.log",
-        level=logging.INFO,
-    )
+    """Run the desktop application, or focus the instance already running."""
+    logging.basicConfig(filename=paths.log_file(), level=logging.INFO)
+    use_system_trust()
+    socket_path = paths.bridge_socket_path()
+    if instance_is_running(socket_path):
+        try:
+            send_to_app({"type": "show"}, socket_path, timeout=2.0)
+        except (ConnectionError, OSError, BridgeError) as error:
+            logging.warning("Could not focus running instance: %s", error)
+        return 0
     application, window = create_application()
+    # The bridge starts only for the real app so tests never bind the socket.
+    if not window.start_bridge(socket_path):
+        logging.error("Browser bridge unavailable; extension capture disabled")
     window.show()
     return application.exec()

@@ -1,0 +1,152 @@
+# Browser Integration
+
+UDM Capture is a WebExtension that sends browser downloads and playing videos
+to UDM. It works in Chromium-based browsers (Chrome, Edge, Brave, Vivaldi,
+Opera, Arc, Chromium) and in Firefox, from one shared source tree.
+
+## What It Does
+
+- **Download capture**: new browser downloads are paused, offered to UDM with
+  the page's cookies, referrer, and user agent, then cancelled in the browser
+  once UDM accepts them. When UDM is unreachable the browser download resumes.
+- **Media detection**: network responses are inspected for HLS (`.m3u8`) and
+  DASH (`.mpd`) manifests and for video or audio files. Segments and byte-range
+  fragments are ignored. Results are listed per tab with a toolbar badge.
+- **On-video button**: a small Download button appears at the top-right of any
+  playing or hovered video (at least 200 by 120 pixels). Its panel offers the
+  page's video, the element's direct file, and every stream detected on the
+  tab. Choosing the page video or a stream lists the qualities yt-dlp finds
+  (for example 1080p, 720p, 480p, and Audio only, with approximate sizes)
+  before anything is sent. It follows the video into fullscreen when the browser
+  allows and can be hidden per video or disabled in the popup.
+- **Context menus**: download a link, a video behind a link, a media element,
+  or the video on the current page.
+- **Popup**: connection status, the capture and on-video toggles, a page
+  download button that opens the same quality list, and the detected media
+  list.
+- **Add, do not start**: captured links join the UDM download list paused,
+  like a download manager's Download Later; start them with Resume. Options >
+  Browser > Start captured downloads immediately restores automatic starting.
+
+## Architecture
+
+```text
+browser extension --(native messaging, stdio)--> native host process
+native host --(Unix socket, JSON lines)--> running UDM app (BridgeServer)
+UDM app --> DownloadWorker (direct files) or StreamWorker (yt-dlp + FFmpeg)
+```
+
+| Module | Responsibility |
+| ------ | -------------- |
+| `extension/src/common.js` | API handle, settings, native messaging, cookie capture |
+| `extension/src/media.js` | Response classification and per-tab media storage |
+| `extension/src/background.js` | Download capture, menus, and message routing |
+| `extension/src/overlay*.js` | On-video button and panel in a closed Shadow DOM |
+| `extension/src/popup.*` | Toolbar popup |
+| `udm/bridge/protocol.py` | Native framing and the app socket protocol |
+| `udm/bridge/native_host.py` | Host process; launches UDM when it is closed |
+| `udm/bridge/server.py` | Qt socket server and single-instance detection |
+| `udm/bridge/browsers.py` | Supported browsers and host-manifest locations |
+| `udm/bridge/extension_build.py` | Per-engine extension assembly and IDs |
+| `udm/bridge/installer.py` | Writes the extension, host wrapper, and manifests |
+| `udm/capture.py` | Validation of incoming requests |
+| `udm/workers/stream.py` | yt-dlp transfers with pause, cancel, and cleanup |
+
+The host is the UDM executable started with `--native-messaging-host`. That
+flag is handled in `MACDM.py` before Qt is imported, so the host starts quickly
+and writes only protocol frames to stdout. When UDM is not running, the host
+starts it (`open UDM.app` for the bundle) and waits up to 20 seconds.
+
+The socket is `bridge.sock` in the data directory. If that path exceeds the
+macOS Unix-socket limit, both processes derive the same short name in the
+system temporary directory instead.
+
+### Messages
+
+Every request is one JSON object. The app answers `{"ok": true}` or
+`{"ok": false, "error": "..."}`.
+
+| `type` | Fields | Effect |
+| ------ | ------ | ------ |
+| `ping` | none | Reports `running` and `version` |
+| `show` | none | Raises the main window |
+| `download` | `url`, `referrer`, `cookies`, `userAgent`, `filename` | Queues a direct HTTP download |
+| `stream` | `url`, `referrer`, `cookies`, `cookieJar`, `userAgent`, `title`, `quality` | Queues a yt-dlp download of a page or manifest |
+| `formats` | `url`, `referrer`, `cookies`, `cookieJar`, `userAgent` | Lists qualities; answered by the native host itself |
+
+Capture replies include `paused`. `quality` is `best`, `audio`, or a height
+such as `720p`; empty uses the Options default. `cookieJar` carries each
+cookie's domain, path, and flags so yt-dlp scopes them correctly.
+
+The native host answers `formats` itself with `udm.workers.format_probe`
+(about 3 seconds for YouTube), so listing qualities neither blocks nor starts
+the desktop app. Sizes are reported by the site or estimated from bitrate and
+duration.
+
+`CaptureRequest.from_message` accepts only HTTP and HTTPS URLs, string fields
+up to 64 KB, and header fields without line breaks.
+
+## Installing
+
+In UDM, open Options > Browser, choose a browser, and click Install Extension.
+UDM then:
+
+1. builds the unpacked extension into
+   `~/Library/Application Support/UDM/extension/<chromium|firefox>/`;
+2. writes the host wrapper `~/Library/Application Support/UDM/native-host/udm-native-host`;
+3. writes `com.udm.capture.json` into the browser's `NativeMessagingHosts`
+   directory, authorizing only the UDM extension ID;
+4. reveals the extension folder in Finder and opens the browser's extensions
+   page, then lists the remaining steps.
+
+Browsers do not allow applications to add extensions silently, so the final
+step is manual:
+
+- **Chromium browsers**: open the extensions page, enable Developer mode,
+  click Load unpacked, and choose the extension folder. The manifest carries a
+  fixed public key, so the unpacked extension ID is always
+  `himmjkpdagijcljpofjkgoagloapginc`.
+- **Firefox**: open `about:debugging#/runtime/this-firefox`, click Load
+  Temporary Add-on, and choose `manifest.json`. Firefox removes temporary
+  add-ons when it quits. A permanent install requires signing through
+  addons.mozilla.org, or Firefox Developer Edition or Nightly with
+  `xpinstall.signatures.required` set to `false`. If Firefox withholds site
+  access, use the Allow access button in the popup.
+
+After updating UDM, install again and click Reload on the extension card.
+
+## Stream Downloads
+
+`StreamWorker` runs yt-dlp with the captured headers and cookies, the
+Options > Network proxy, and up to 16 concurrent fragments (the segment
+setting). The quality chosen in the browser wins; otherwise Options > Browser
+sets the default (Best, 1080p, 720p, 480p, or Audio Only). Within a resolution
+H.264 video and AAC audio are preferred so files play in QuickTime and Finder.
+YouTube requires solving JavaScript challenges, which yt-dlp does with the
+Deno runtime (the `deno` wheel, bundled in the app) and the `yt-dlp-ejs`
+scripts. HTTPS is verified through the macOS trust store (`truststore`), which
+matches browser behavior for servers that send incomplete certificate chains. Video
+and audio are merged to MP4 with the FFmpeg binary shipped by
+`imageio-ffmpeg`, falling back to a system `ffmpeg`. Files are written to the
+Videos category as `<title> [<id>].<ext>`. Pausing holds the transfer at the
+next progress callback; cancelling removes `.part`, `.ytdl`, and fragment files.
+
+## Limits
+
+- DRM-protected services (Widevine, FairPlay, PlayReady) such as Netflix,
+  Disney+, Prime Video, and Spotify cannot be downloaded, and UDM does not try
+  to circumvent protection.
+- Sites may forbid downloading in their terms of service; users are
+  responsible for what they download.
+- Some signed stream URLs expire quickly; send them to UDM promptly.
+- Overlay buttons cannot appear inside a video element that is itself in
+  fullscreen, because the browser renders no other content there.
+
+## Future Work
+
+- TODO: Publish to the Chrome Web Store, Edge Add-ons, and addons.mozilla.org,
+  adding each store-assigned extension ID to the host manifest.
+- TODO: Safari support. Safari extensions ship inside a macOS app built with
+  Xcode (`xcrun safari-web-extension-converter`) and reach native code through
+  the containing app instead of a host manifest. The shared Manifest V3 source
+  is the starting point.

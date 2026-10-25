@@ -9,16 +9,18 @@ from unittest.mock import Mock
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from bs4 import BeautifulSoup
+import requests
 
 from udm.workers.download import DownloadWorker
 from udm.workers.spiders import SpiderWorker
 
 
 class FakeResponse:
-    def __init__(self, chunks=None, headers=None, status_code=200):
+    def __init__(self, chunks=None, headers=None, status_code=200, url=None):
         self.chunks = chunks or []
         self.headers = headers or {}
         self.status_code = status_code
+        self.url = url
 
     def raise_for_status(self):
         return None
@@ -176,6 +178,56 @@ class DownloadWorkerTests(unittest.TestCase):
             worker.run()
             self.assertEqual(target.read_bytes(), b"abcdef")
             self.assertTrue(completions[0][1])
+
+    def _relocating_worker(self, root, head, gets, url="https://e.com/download?id=7"):
+        session = self._session(head, gets)
+        worker = DownloadWorker(
+            "r1", url, root / "Others" / "download", segments=1, session=session,
+            router=lambda name: str(root / ("Programs/Mac" if name.endswith(".dmg") else "Others")),
+        )
+        moves, completions = [], []
+        worker.relocated.connect(lambda *values: moves.append(values))
+        worker.completed.connect(lambda *values: completions.append(values))
+        return worker, moves, completions
+
+    def test_content_disposition_routes_dmg_to_its_category(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            head = FakeResponse(headers={
+                "content-length": "3",
+                "content-disposition": 'attachment; filename="Windscribe.dmg"',
+            })
+            worker, moves, completions = self._relocating_worker(
+                root, head, [FakeResponse(chunks=[b"dmg"])]
+            )
+            worker.run()
+            target = root / "Programs" / "Mac" / "Windscribe.dmg"
+            self.assertEqual(moves, [("r1", str(target))])
+            self.assertEqual(target.read_bytes(), b"dmg")
+            self.assertFalse((root / "Others" / "download").exists())
+            self.assertTrue(completions[0][1])
+
+    def test_redirect_url_name_is_used_when_head_fails(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            session_head = Mock(side_effect=requests.ConnectionError("no HEAD"))
+            worker, moves, _ = self._relocating_worker(
+                root, None,
+                [FakeResponse(chunks=[b"x"], url="https://cdn.e.com/v/App-1.2.dmg")],
+            )
+            worker.session.head = session_head
+            worker.run()
+            self.assertEqual(moves[0][1], str(root / "Programs" / "Mac" / "App-1.2.dmg"))
+
+    def test_matching_name_is_not_relocated(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            worker, moves, _ = self._relocating_worker(
+                root, FakeResponse(headers={"content-length": "1"}),
+                [FakeResponse(chunks=[b"x"])], url="https://e.com/download",
+            )
+            worker.run()
+            self.assertEqual(moves, [])
 
 
 if __name__ == "__main__":
