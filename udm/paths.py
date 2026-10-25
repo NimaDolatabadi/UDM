@@ -68,7 +68,8 @@ def bridge_socket_path():
     if len(os.fsencode(preferred)) <= _MAX_SOCKET_PATH:
         return preferred
     digest = hashlib.sha256(os.fsencode(data_dir())).hexdigest()[:12]
-    return Path(tempfile.gettempdir()) / f"udm-{os.getuid()}-{digest}.sock"
+    user = os.getuid() if hasattr(os, "getuid") else "user"
+    return Path(tempfile.gettempdir()) / f"udm-{user}-{digest}.sock"
 
 
 def resolve_config_path(legacy_dir=None):

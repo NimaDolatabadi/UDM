@@ -2,7 +2,7 @@
 # Build UDM.app with PyInstaller and wrap it in a drag-to-install DMG.
 #
 # Usage: conda run -n mine packaging/macos/build_dmg.sh
-# Output: dist/UDM-<version>.dmg
+# Output: dist/UDM-<version>-macos-<arch>.dmg
 set -eu
 
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
@@ -11,7 +11,7 @@ VERSION=$(tr -d '[:space:]' < "$ROOT/VERSION")
 BUILD="$ROOT/build/macos"
 DIST="$ROOT/dist"
 STAGING="$BUILD/dmg"
-DMG="$DIST/UDM-$VERSION.dmg"
+DMG="$DIST/UDM-$VERSION-macos-$(uname -m).dmg"
 
 rm -rf "$BUILD"
 mkdir -p "$BUILD" "$DIST"
@@ -27,11 +27,11 @@ done
 iconutil -c icns "$ICONSET" -o "$BUILD/UDM.icns"
 
 echo "Building UDM.app $VERSION"
-UDM_ICNS="$BUILD/UDM.icns" "$PYTHON" -m PyInstaller \
+UDM_ICON="$BUILD/UDM.icns" "$PYTHON" -m PyInstaller \
     --noconfirm --clean \
     --distpath "$BUILD/dist" \
     --workpath "$BUILD/work" \
-    "$ROOT/packaging/macos/udm.spec"
+    "$ROOT/packaging/udm.spec"
 
 APP="$BUILD/dist/UDM.app"
 # PyInstaller signs ad hoc; re-sign the whole bundle so Apple silicon accepts

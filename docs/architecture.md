@@ -27,7 +27,8 @@ components:
 ```text
 MACDM.py                  entry point; dispatches --native-messaging-host
 extension/                browser extension source (see browser-integration.md)
-packaging/macos/          PyInstaller spec and DMG build script
+packaging/                shared PyInstaller spec; macos/, windows/, linux/ build scripts
+.github/workflows/        CI tests and release packaging
 udm/
   __init__.py             package version
   app.py                  Qt application, single instance, bridge start
@@ -204,5 +205,5 @@ lower-level modules reusable and prevents circular imports.
 - Test bridge framing, the native host, the socket server, installer output,
   extension assembly, capture validation, and the stream worker with a fake
   yt-dlp downloader.
-- Before a release, build the DMG and exercise the bundled native host and
+- Before a release, build the packages (see `docs/packaging.md`) and exercise the bundled native host and
   single-instance handoff (see `docs/packaging.md`).

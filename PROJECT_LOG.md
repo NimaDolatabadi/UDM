@@ -3,6 +3,25 @@
 This file records project changes in reverse chronological order. Every entry
 corresponds to the canonical version in `VERSION` at the time of the change.
 
+## 2026-10-25 - 0.8.0 - Minor
+
+- Added release packages for every platform, published as GitHub releases by
+  `.github/workflows/release.yml` when a `v<version>` tag is pushed: macOS
+  DMGs for Apple silicon and Intel, a Windows installer (Inno Setup) and
+  portable zip, Linux `.deb`, `.rpm`, and Arch Linux packages built with fpm,
+  a Linux tarball, and `SHA256SUMS.txt`. Release notes come from this log.
+- Added `.github/workflows/ci.yml`, which runs the unit tests on Ubuntu and
+  macOS for pushes to `main` and pull requests.
+- Moved the PyInstaller spec to `packaging/udm.spec` and made it
+  cross-platform; the icon is passed as `UDM_ICON`. Added
+  `packaging/windows/` and `packaging/linux/` build scripts. macOS DMGs are
+  now named `UDM-<version>-macos-<arch>.dmg`.
+- The bridge client reports a connection error instead of crashing where
+  Python has no Unix sockets (Windows), and the fallback socket name no longer
+  needs `os.getuid`. Browser-extension installation remains macOS-only.
+- Documented the release process and per-platform packages in
+  `docs/packaging.md` and the README.
+
 ## 2026-10-25 - 0.7.1 - Patch
 
 - Fixed browser download capture (issue #5): clicking a download link in

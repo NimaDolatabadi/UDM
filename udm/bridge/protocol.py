@@ -60,6 +60,9 @@ def send_to_app(message, socket_path, timeout=5.0):
     ``ConnectionRefusedError``) when no app is listening, and
     ``BridgeError`` when the reply is malformed.
     """
+    # Windows Python has no AF_UNIX; the bridge is unavailable there.
+    if not hasattr(socket, "AF_UNIX"):
+        raise ConnectionError("Local sockets are not supported on this platform")
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
         client.settimeout(timeout)
         try:

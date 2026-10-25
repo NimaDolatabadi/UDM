@@ -1,0 +1,96 @@
+# Build UDM for macOS, Windows, and Linux and publish a GitHub release.
+#
+# Pushing a tag v<VERSION> builds every package and attaches it to a release
+# named after the tag. Running the workflow by hand builds the packages as
+# workflow artifacts without publishing a release.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macos-arm64
+            os: macos-15
+          - name: macos-x86_64
+            os: macos-15-intel
+          - name: windows-x64
+            os: windows-2022
+          - name: linux-x86_64
+            os: ubuntu-22.04
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Check the tag matches VERSION
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: test "v$(tr -d '[:space:]' < VERSION)" = "$GITHUB_REF_NAME"
+      - name: Install build dependencies
+        run: pip install -r packaging/requirements-build.txt pillow
+      - name: Build macOS disk image
+        if: runner.os == 'macOS'
+        run: packaging/macos/build_dmg.sh
+      - name: Build Windows installer
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) { choco install innosetup -y --no-progress }
+          packaging/windows/build_installer.ps1
+      - name: Build Linux packages
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ruby ruby-dev rpm libarchive-tools xz-utils libegl1 libxkbcommon-x11-0 libxcb-cursor0
+          sudo gem install --no-document fpm
+          packaging/linux/build_packages.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: udm-${{ matrix.name }}
+          path: |
+            dist/*.dmg
+            dist/*.exe
+            dist/*.zip
+            dist/*.deb
+            dist/*.rpm
+            dist/*.pkg.tar.xz
+            dist/*.tar.gz
+          if-no-files-found: error
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Extract release notes from PROJECT_LOG.md
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          awk -v v="$version" '
+            /^## / { if (found) exit; if (index($0, " - " v " - ")) { found = 1; next } }
+            found { print }
+          ' PROJECT_LOG.md > notes.md
+          test -s notes.md || echo "UDM $version" > notes.md
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          (cd dist && sha256sum * > SHA256SUMS.txt)
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --title "UDM ${GITHUB_REF_NAME#v}" --notes-file notes.md

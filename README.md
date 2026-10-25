@@ -39,8 +39,9 @@ categorization, scheduling, and system tray integration.
 - **Native Torrents**: Magnet links and `.torrent` files download through
   libtorrent in the Torrents tab, with pause, resume, and progress that
   survives restarts. The app opens magnet links clicked in a browser.
-- **macOS App and DMG**: Builds a standalone `UDM.app` in a drag-to-install
-  disk image.
+- **Installers for macOS, Windows, and Linux**: GitHub releases ship a macOS
+  DMG, a Windows installer and portable zip, and Linux `.deb`, `.rpm`, and
+  Arch Linux packages.
 - **Multi-Language Support**: Includes English, Persian, Russian, French, and
   Italian.
 
@@ -61,7 +62,8 @@ UDM/
 |   |-- workers/         # Download, stream (yt-dlp), and spider threads
 |   `-- ui/              # Dialogs, tabs, window controllers, and theme package
 |-- extension/           # UDM Capture browser extension source
-|-- packaging/macos/     # PyInstaller spec and DMG build script
+|-- packaging/           # PyInstaller spec and per-platform package scripts
+|-- .github/workflows/   # CI tests and the release build
 |-- tests/               # Automated unit and offscreen UI tests
 |-- docs/                # Architecture, design system, browser, packaging
 |-- udm_config.json      # Local settings, created on first run (untracked)
@@ -72,11 +74,22 @@ UDM/
 
 ## Installation & Setup
 
-### Option A: macOS Disk Image
+### Option A: Download a Release
 
-Build `dist/UDM-<version>.dmg` (see `docs/packaging.md`), open it, and drag UDM
-into Applications. Requires macOS 15 or later. The build is not notarized, so Control-click UDM and choose
-Open on first launch.
+Download the package for your system from the
+[Releases page](https://github.com/NimaDolatabadi/UDM/releases):
+
+* **macOS 15 or later**: `UDM-<version>-macos-arm64.dmg` (Apple silicon) or
+  `-macos-x86_64.dmg` (Intel). Open it and drag UDM into Applications. The
+  build is not notarized, so Control-click UDM and choose Open on first launch.
+* **Windows 10 or later**: `UDM-<version>-windows-x64-setup.exe`, or the
+  portable `.zip`.
+* **Debian and Ubuntu**: `sudo apt install ./udm_<version>_amd64.deb`
+* **Fedora and RHEL**: `sudo dnf install ./udm-<version>-1.x86_64.rpm`
+* **Arch Linux**: `sudo pacman -U ./udm-<version>-1-x86_64.pkg.tar.xz`
+
+The browser extension installer is currently macOS-only. See
+`docs/packaging.md` to build the packages yourself.
 
 ### Option B: From Source
 
@@ -191,7 +204,7 @@ UDM_DEV=1 conda run -n mine python MACDM.py
   stream detection, an on-video Download button, and quality selection.
 - yt-dlp stream downloads (including YouTube) merged to MP4 with FFmpeg.
 - Single-instance app that the browser can launch on demand.
-- Standalone macOS app bundle and DMG.
+- Release packages for macOS, Windows, and Linux built by GitHub Actions.
 - Native magnet and `.torrent` downloads with resume across restarts.
 
 ### Future Development

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=UDM
+GenericName=Download Manager
+Comment=Umbrella Download Manager
+Exec=udm
+Icon=udm
+Terminal=false
+Categories=Network;FileTransfer;
+StartupWMClass=UDM
