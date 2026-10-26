@@ -3,6 +3,16 @@
 This file records project changes in reverse chronological order. Every entry
 corresponds to the canonical version in `VERSION` at the time of the change.
 
+## 2026-10-26 - 0.8.2 - Patch
+
+- Fixed a crash on macOS 27 when the menu bar (tray) icon was clicked
+  (issue #6). Qt's Cocoa plugin reads `clickCount` from the current event
+  when a natively attached status item menu starts tracking; on macOS 27 that
+  event is not a mouse event, so AppKit raised an assertion and UDM aborted.
+  The new `udm/ui/tray_menu.py` leaves the menu detached on macOS and pops it
+  up at the cursor on a tray click. Linux and Windows still attach the menu
+  natively.
+
 ## 2026-10-25 - 0.8.1 - Patch
 
 - Fixed torrents losing their paused state when UDM quit soon after a pause.

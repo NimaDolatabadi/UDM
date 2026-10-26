@@ -17,6 +17,7 @@ from udm.constants import DOWNLOAD_EXTENSIONS
 from udm.torrent.engine import is_magnet
 from udm.ui.dev_reload import install_style_hot_reload
 from udm.ui.tabs import BulkTab, DownloadsTab, GrabberTab, TorrentsTab
+from udm.ui.tray_menu import attach_tray_menu, popup_tray_menu
 
 
 class WindowShell:
@@ -49,14 +50,16 @@ class WindowShell:
         if not QSystemTrayIcon.isSystemTrayAvailable():
             return
         self.tray_icon = QSystemTrayIcon(icon, self)
-        tray_menu = QMenu()
+        # Retained on the window because the macOS path never hands the menu
+        # to the tray icon.
+        tray_menu = self.tray_menu = QMenu()
         show_action = QAction("Show / Hide", self)
         show_action.triggered.connect(self.toggle_window_visibility)
         tray_menu.addAction(show_action)
         quit_action = QAction("Quit", self)
         quit_action.triggered.connect(self.quit_app)
         tray_menu.addAction(quit_action)
-        self.tray_icon.setContextMenu(tray_menu)
+        attach_tray_menu(self.tray_icon, tray_menu)
         self.tray_icon.activated.connect(self.on_tray_icon_activated)
         if self.config_manager.config.get("close_to_tray", True):
             self.tray_icon.show()
@@ -184,7 +187,9 @@ class WindowShell:
             self.activateWindow()
 
     def on_tray_icon_activated(self, reason):
-        """Toggle the window for a primary tray-icon activation."""
+        """Show the detached menu on macOS; elsewhere toggle on a primary click."""
+        if popup_tray_menu(self.tray_menu, reason):
+            return
         if reason == QSystemTrayIcon.ActivationReason.Trigger:
             self.toggle_window_visibility()
 
