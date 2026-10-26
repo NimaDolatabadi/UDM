@@ -3,6 +3,20 @@
 This file records project changes in reverse chronological order. Every entry
 corresponds to the canonical version in `VERSION` at the time of the change.
 
+## 2026-10-26 - 0.8.3 - Patch
+
+- Fixed showing the window from the tray. The toggle only checked
+  `isVisible()`, which is also true for a window behind other applications or
+  minimized to the Dock. A window behind other apps was hidden instead of
+  raised, so it flashed and disappeared. A minimized window was hidden, and
+  showing it again on macOS restored it as an empty black frame. The new
+  `udm/ui/window_presence.py` treats the window as in front only when it is
+  visible, not minimized, and active. It also clears the minimized flag before
+  showing the window. The tray menu item now reads "Show UDM" or "Hide UDM",
+  based on the window state when the menu opens.
+- Synced `udm.__version__` with `VERSION`. The 0.8.2 change bumped only
+  `VERSION`, so 0.8.2 builds reported 0.8.1 to the browser extension.
+
 ## 2026-10-26 - 0.8.2 - Patch
 
 - Fixed a crash on macOS 27 when the menu bar (tray) icon was clicked

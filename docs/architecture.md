@@ -61,6 +61,7 @@ udm/
     main_window.py        concrete window composed from mixins
     window_shell.py       chrome, tray, lifecycle
     tray_menu.py          tray menu wiring (no native menu on macOS)
+    window_presence.py    in-front check and restore for tray show/hide
     window_actions.py     toolbar, translation, dialogs
     window_theme.py       theme application
     window_downloads.py   queue rows and worker lifecycle
@@ -157,7 +158,9 @@ The concrete main window composes focused mixins:
 - shell: application chrome, toolbar, tabs, translations, tray, and lifecycle;
   on macOS the tray menu is not attached to the native status item, because
   Qt's Cocoa plugin crashes on macOS 27 when that menu opens (issue #6); it is
-  popped up at the cursor from the tray `activated` signal instead;
+  popped up at the cursor from the tray `activated` signal instead. Tray
+  show/hide hides the window only when it is visible, not minimized, and
+  active; otherwise it restores the window, clearing the minimized state first;
 - downloads: queue rows, workers, selection, pause, resume, and deletion;
 - queue runtime: schedule-window enforcement and concurrency-limited admission;
 - grabber: single-page discovery, filtering, selection, and transfer;

@@ -18,6 +18,7 @@ from udm.torrent.engine import is_magnet
 from udm.ui.dev_reload import install_style_hot_reload
 from udm.ui.tabs import BulkTab, DownloadsTab, GrabberTab, TorrentsTab
 from udm.ui.tray_menu import attach_tray_menu, popup_tray_menu
+from udm.ui.window_presence import bring_to_front, is_in_front
 
 
 class WindowShell:
@@ -53,9 +54,10 @@ class WindowShell:
         # Retained on the window because the macOS path never hands the menu
         # to the tray icon.
         tray_menu = self.tray_menu = QMenu()
-        show_action = QAction("Show / Hide", self)
-        show_action.triggered.connect(self.toggle_window_visibility)
-        tray_menu.addAction(show_action)
+        self.tray_show_action = QAction("Show UDM", self)
+        self.tray_show_action.triggered.connect(self._on_tray_show_triggered)
+        tray_menu.addAction(self.tray_show_action)
+        tray_menu.aboutToShow.connect(self._capture_tray_window_state)
         quit_action = QAction("Quit", self)
         quit_action.triggered.connect(self.quit_app)
         tray_menu.addAction(quit_action)
@@ -178,13 +180,25 @@ class WindowShell:
             self.clipboard.blockSignals(False)
 
     def toggle_window_visibility(self):
-        """Toggle between a visible window and background tray operation."""
-        if self.isVisible():
+        """Hide the window when it is in front; otherwise bring it forward."""
+        self._apply_window_toggle(is_in_front(self))
+
+    def _capture_tray_window_state(self):
+        # Captured as the menu opens: choosing a menu item can activate the
+        # app, which would make a background window look frontmost.
+        self._tray_window_in_front = is_in_front(self)
+        self.tray_show_action.setText(
+            "Hide UDM" if self._tray_window_in_front else "Show UDM"
+        )
+
+    def _on_tray_show_triggered(self):
+        self._apply_window_toggle(getattr(self, "_tray_window_in_front", False))
+
+    def _apply_window_toggle(self, in_front):
+        if in_front:
             self.hide()
         else:
-            self.show()
-            self.raise_()
-            self.activateWindow()
+            bring_to_front(self)
 
     def on_tray_icon_activated(self, reason):
         """Show the detached menu on macOS; elsewhere toggle on a primary click."""
