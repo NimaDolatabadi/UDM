@@ -13,7 +13,6 @@ from PyQt6.QtWidgets import (
 )
 
 from udm import paths
-from udm.constants import DOWNLOAD_EXTENSIONS
 from udm.torrent.engine import is_magnet
 from udm.ui.dev_reload import install_style_hot_reload
 from udm.ui.tabs import BulkTab, DownloadsTab, GrabberTab, TorrentsTab
@@ -81,7 +80,7 @@ class WindowShell:
         splitter.addWidget(self.queue_tree)
 
         self.tabs = QTabWidget()
-        self.downloads_tab = DownloadsTab()
+        self.downloads_tab = DownloadsTab(lambda: self.current_theme)
         self.torrents_tab = TorrentsTab()
         self.grabber_tab = GrabberTab()
         self.bulk_tab = BulkTab()
@@ -125,59 +124,6 @@ class WindowShell:
         self.bulk_tab.transfer_button.clicked.connect(
             self.bulk_transfer_to_queue
         )
-
-    def setup_clipboard_monitor(self):
-        """Connect clipboard discovery once, even after repeated option changes."""
-        if self.clipboard is not None:
-            return
-        self.clipboard = QApplication.clipboard()
-        self.clipboard.dataChanged.connect(self.on_clipboard_change)
-        self.last_clipboard_text = ""
-
-    def teardown_clipboard_monitor(self):
-        """Disconnect clipboard discovery when the option is disabled."""
-        if self.clipboard is not None:
-            self.clipboard.dataChanged.disconnect(self.on_clipboard_change)
-            self.clipboard = None
-
-    def on_clipboard_change(self):
-        """Offer copied magnet links and supported HTTP file links."""
-        if not self.config_manager.config.get("clipboard_monitor", False):
-            return
-        text = self.clipboard.text().strip()
-        magnet = is_magnet(text)
-        if (
-            not text
-            or text == self.last_clipboard_text
-            or not (
-                magnet
-                or text.startswith(("http://", "https://"))
-                and text.lower().split("?", 1)[0].endswith(DOWNLOAD_EXTENSIONS)
-            )
-        ):
-            return
-        self.last_clipboard_text = text
-        # The question dialog can itself affect clipboard state on some desktop
-        # environments. Blocking signals prevents a recursive prompt.
-        self.clipboard.blockSignals(True)
-        try:
-            from PyQt6.QtWidgets import QMessageBox
-
-            kind = "magnet link" if magnet else "file link"
-            answer = QMessageBox.question(
-                self,
-                "Download Detected",
-                f"Detected a {kind} in clipboard:\n{text}\n\n"
-                "Add to downloads?",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            )
-            if answer == QMessageBox.StandardButton.Yes:
-                if magnet:
-                    self.add_torrent_source(text)
-                else:
-                    self.add_to_downloads(text)
-        finally:
-            self.clipboard.blockSignals(False)
 
     def toggle_window_visibility(self):
         """Hide the window when it is in front; otherwise bring it forward."""
@@ -276,7 +222,7 @@ class WindowShell:
             if is_magnet(text):
                 self.add_torrent_source(text)
             elif text.startswith(("http://", "https://")):
-                self.add_to_downloads(text)
+                self.offer_download(text)
         event.acceptProposedAction()
 
     def apply_start_minimized(self):

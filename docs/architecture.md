@@ -64,7 +64,11 @@ udm/
     window_presence.py    in-front check and restore for tray show/hide
     window_actions.py     toolbar, translation, dialogs
     window_theme.py       theme application
-    window_downloads.py   queue rows and worker lifecycle
+    window_add_downloads.py  new-download prompt flow and queue rows
+    download_prompt.py    New Download dialog (folder, Start Now, Later)
+    window_downloads.py   worker lifecycle, progress, row updates
+    progress_delegate.py  progress bar painted in the Size column
+    window_clipboard.py   clipboard link monitor
     window_queue_actions.py  pause, resume, stop, delete
     window_bridge.py      extension request handling
     window_torrents.py    Torrents tab and torrent engine lifecycle
@@ -161,7 +165,14 @@ The concrete main window composes focused mixins:
   popped up at the cursor from the tray `activated` signal instead. Tray
   show/hide hides the window only when it is visible, not minimized, and
   active; otherwise it restores the window, clearing the minimized state first;
-- downloads: queue rows, workers, selection, pause, resume, and deletion;
+- add downloads: single links, clipboard links, dropped links, and browser
+  captures go through `offer_download`, which opens the New Download prompt
+  (folder, file name, Start Now, Download Later, Cancel) unless Options turns
+  it off. Grabber and Bulk transfers add rows directly. A chosen folder keeps
+  server-reported names in that folder, and an edited name is kept exactly;
+- downloads: workers, progress, and row updates. The Size column stores the
+  percentage in `PROGRESS_ROLE`, and `ProgressDelegate` paints it as a bar;
+- clipboard: offers copied magnet and file links;
 - queue runtime: schedule-window enforcement and concurrency-limited admission;
 - grabber: single-page discovery, filtering, selection, and transfer;
 - bulk: recursive discovery, progress, cancellation, and transfer;

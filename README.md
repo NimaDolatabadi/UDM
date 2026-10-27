@@ -33,9 +33,12 @@ categorization, scheduling, and system tray integration.
   Options > Browser.
 - **Streaming Video Downloads**: Pages and stream manifests (including
   YouTube, through a bundled Deno runtime) are resolved by yt-dlp and merged
-  with a bundled FFmpeg. Pick the quality from a list in the browser; captured
-  links join the download list paused until you press Resume. DRM protected
+  with a bundled FFmpeg. Pick the quality from a list in the browser, then
+  choose the save folder and Start Now or Download Later in UDM. DRM protected
   services are not supported.
+- **New Download Prompt and Progress Bars**: Each link or video you send to
+  UDM opens a prompt with the file name, save folder, Start Now, Download
+  Later, and Cancel. Every row in the download list shows a progress bar.
 - **Native Torrents**: Magnet links and `.torrent` files download through
   libtorrent in the Torrents tab, with pause, resume, and progress that
   survives restarts. The app opens magnet links clicked in a browser.
@@ -149,9 +152,11 @@ Details and the message protocol are in `docs/browser-integration.md`.
 - Hover or play a video to show the Download button at its top-right. Choose
   **This video** or a detected stream, then pick a quality (Best, 1080p, 720p,
   and so on, or Audio only) from the list with approximate sizes.
-- Captured items join the UDM download list **paused**; press Resume to start
-  them. To start them immediately, enable Options > Browser > Start captured
-  downloads immediately.
+- Each captured item opens UDM's **New Download** prompt: pick the folder and
+  press **Start Now** or **Download Later**, or **Cancel**. Turn the prompt
+  off with Options > Browser > Ask where to save each new download; captured
+  items then join the list paused unless Start captured downloads immediately
+  is on.
 - The toolbar popup shows the connection status, toggles, and every media
   stream detected on the current tab.
 

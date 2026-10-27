@@ -33,9 +33,11 @@ Opera, Arc, Chromium) and in Firefox, from one shared source tree.
 - **Popup**: connection status, the capture and on-video toggles, a page
   download button that opens the same quality list, and the detected media
   list.
-- **Add, do not start**: captured links join the UDM download list paused,
-  like a download manager's Download Later; start them with Resume. Options >
-  Browser > Start captured downloads immediately restores automatic starting.
+- **Ask where and when**: each captured link or video opens UDM's New
+  Download prompt with the save folder, Start Now, Download Later, and Cancel.
+  With Options > Browser > Ask where to save each new download turned off,
+  captured links join the download list paused, like Download Later, unless
+  Start captured downloads immediately is on.
 
 ## Architecture
 
@@ -84,7 +86,9 @@ Every request is one JSON object. The app answers `{"ok": true}` or
 | `stream` | `url`, `referrer`, `cookies`, `cookieJar`, `userAgent`, `title`, `quality` | Queues a yt-dlp download of a page or manifest |
 | `formats` | `url`, `referrer`, `cookies`, `cookieJar`, `userAgent` | Lists qualities; answered by the native host itself |
 
-Capture replies include `paused`. `quality` is `best`, `audio`, or a height
+Capture replies include `pending: true` when the New Download prompt opened,
+and otherwise `paused`. The app replies before the user answers the prompt,
+because the native host waits only 2 seconds. `quality` is `best`, `audio`, or a height
 such as `720p`; empty uses the Options default. `cookieJar` carries each
 cookie's domain, path, and flags so yt-dlp scopes them correctly.
 

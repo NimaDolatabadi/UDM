@@ -70,7 +70,9 @@ function notify(reply, request) {
   api.notifications.create({
     type: "basic",
     iconUrl: ICON,
-    title: reply.ok ? "Added to the UDM download list" : "UDM could not take this link",
+    title: !reply.ok
+      ? "UDM could not take this link"
+      : reply.pending ? "Sent to UDM - choose where to save" : "Added to the UDM download list",
     message: reply.ok ? (request.title || request.url) : reply.error,
   });
 }

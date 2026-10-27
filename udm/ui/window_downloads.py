@@ -1,104 +1,27 @@
-"""Download queue rows and worker lifecycle for the main window."""
+"""Download workers, progress, and row updates for the main window."""
 
 import os
-from urllib.parse import urlparse
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QAction, QBrush, QColor
-from PyQt6.QtWidgets import (
-    QInputDialog,
-    QMenu,
-    QTableWidgetItem,
-)
+from PyQt6.QtWidgets import QMenu, QTableWidgetItem
 
 from udm.capture import STREAM_KIND
 from udm.constants import DEFAULT_CONFIG, SCHEDULE_COLORS
 from udm.i18n import TRANSLATIONS
 from udm.network import create_http_session
-from udm.ui.download_roles import PATH_ROLE, SCHEDULE_ROLE, URL_ROLE
+from udm.ui.download_roles import PATH_ROLE, PROGRESS_ROLE, SCHEDULE_ROLE
 from udm.ui.queue_runtime import QueueRuntimeController
+from udm.ui.window_add_downloads import AddDownloadController
 from udm.ui.window_queue_actions import QueueActionsController
 from udm.workers.download import DownloadWorker
 from udm.workers.stream import StreamWorker
 
 
-class DownloadController(QueueActionsController, QueueRuntimeController):
+class DownloadController(
+    AddDownloadController, QueueActionsController, QueueRuntimeController
+):
     """Manage queue rows and their download workers."""
-
-    def prompt_add_url(self):
-        """Prompt for a URL and add it to the active download queue."""
-        url, accepted = QInputDialog.getText(self, "Add URL", "Enter URL:")
-        if accepted and url:
-            self.add_to_downloads(url)
-
-    def add_to_downloads(self, url, start_paused=False, schedule_idx=None, request=None):
-        """Create a file-download row and queue it for the scheduler.
-
-        ``request`` is an optional :class:`~udm.capture.CaptureRequest` whose
-        browser headers and suggested filename are used for the transfer.
-        Returns the new download identifier.
-        """
-        url = url.strip()
-        filename = (
-            (request.filename if request else "")
-            or os.path.basename(urlparse(url).path)
-            or "downloaded_file"
-        )
-        target_dir = self.config_manager.get_category_path(filename)
-        save_path = self._unique_save_path(target_dir, filename)
-        return self._insert_row(
-            url,
-            os.path.basename(save_path),
-            save_path,
-            f"Saved to: {target_dir}",
-            start_paused,
-            schedule_idx,
-            request,
-        )
-
-    def add_stream(self, request, start_paused=False):
-        """Create a row resolved by yt-dlp for a page or stream manifest."""
-        target_dir = self.config_manager.get_category_path("stream.mp4")
-        return self._insert_row(
-            request.url,
-            request.display_name(),
-            target_dir,
-            f"Stream to: {target_dir}",
-            start_paused,
-            None,
-            request,
-        )
-
-    def _insert_row(
-        self, url, label, save_path, description, start_paused, schedule_idx, request
-    ):
-        table = self.downloads_tab.table
-        row = table.rowCount()
-        table.insertRow(row)
-        download_id = f"dl_{os.urandom(6).hex()}"
-        name = QTableWidgetItem(label)
-        name.setData(Qt.ItemDataRole.UserRole, download_id)
-        name.setData(URL_ROLE, url)
-        name.setData(PATH_ROLE, save_path)
-        if schedule_idx is not None:
-            color_index = schedule_idx % len(SCHEDULE_COLORS)
-            name.setBackground(QBrush(QColor(SCHEDULE_COLORS[color_index])))
-            name.setData(SCHEDULE_ROLE, schedule_idx)
-        table.setItem(row, 0, name)
-        table.setItem(row, 1, QTableWidgetItem("0 B / --"))
-        table.setItem(
-            row, 2, QTableWidgetItem("Paused" if start_paused else "Queued")
-        )
-        table.setItem(row, 3, QTableWidgetItem("--"))
-        table.setItem(row, 4, QTableWidgetItem("--"))
-        table.setItem(row, 5, QTableWidgetItem(description))
-        if request is not None:
-            self.download_requests[download_id] = request
-        self.pending_downloads[download_id] = (url, save_path)
-        if start_paused:
-            self.manually_paused.add(download_id)
-        self.reconcile_download_queue()
-        return download_id
 
     def start_worker(self, download_id, url, save_path):
         """Create, connect, retain, and start one download worker."""
@@ -143,7 +66,9 @@ class DownloadController(QueueActionsController, QueueRuntimeController):
             proxy=proxy,
             session=create_http_session(config.get("dns", "")),
             headers=headers,
-            router=self.config_manager.get_category_path,
+            router=self.download_routers.get(
+                download_id, self.config_manager.get_category_path
+            ),
         )
 
     def on_worker_progress(
@@ -160,14 +85,20 @@ class DownloadController(QueueActionsController, QueueRuntimeController):
         if row is None:
             return
         table = self.downloads_tab.table
-        table.setItem(
-            row,
-            1,
-            QTableWidgetItem(
-                f"{self._format_size(downloaded)} / "
-                f"{self._format_size(total) if total else '--'}"
-            ),
+        size = QTableWidgetItem(
+            f"{self._format_size(downloaded)} / "
+            f"{self._format_size(total) if total else '--'}"
         )
+        previous = table.item(row, 1)
+        # Updates without a total, such as stream post-processing, keep the
+        # last known percentage instead of dropping the bar.
+        percent = (
+            min(100, int(downloaded * 100 / total))
+            if total
+            else previous.data(PROGRESS_ROLE) if previous else None
+        )
+        size.setData(PROGRESS_ROLE, percent)
+        table.setItem(row, 1, size)
         current_status = table.item(row, 2)
         if (
             download_id not in self.manually_paused
@@ -204,6 +135,9 @@ class DownloadController(QueueActionsController, QueueRuntimeController):
         if row is not None:
             status = "Completed" if success else f"Failed: {message}"
             self.downloads_tab.table.setItem(row, 2, QTableWidgetItem(status))
+            size = self.downloads_tab.table.item(row, 1)
+            if success and size is not None:
+                size.setData(PROGRESS_ROLE, 100)
             if success and self.config_manager.config.get(
                 "sound_on_complete",
                 False,
@@ -216,6 +150,7 @@ class DownloadController(QueueActionsController, QueueRuntimeController):
             self.cancelling_workers[download_id] = worker
         if success:
             self.download_requests.pop(download_id, None)
+            self.download_routers.pop(download_id, None)
         self.manually_paused.discard(download_id)
         self.reconcile_download_queue()
 

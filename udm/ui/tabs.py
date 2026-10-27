@@ -13,6 +13,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from udm.ui.progress_delegate import ProgressDelegate
 from udm.ui.theme import theme_for
 
 # Spacing and radius scales are shared across themes, so a single resolved theme
@@ -41,11 +42,17 @@ def configured_table(columns):
 
 
 class DownloadsTab(QWidget):
-    """Download queue table."""
+    """Download queue table with a progress bar in the size column.
 
-    def __init__(self):
+    ``theme_source`` returns the active theme used to paint progress bars.
+    """
+
+    def __init__(self, theme_source=lambda: None):
         super().__init__()
         self.table = configured_table(6)
+        self.table.setItemDelegateForColumn(
+            1, ProgressDelegate(theme_source, self.table)
+        )
         layout = _page_layout(self)
         layout.addWidget(self.table)
 

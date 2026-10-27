@@ -3,6 +3,29 @@
 This file records project changes in reverse chronological order. Every entry
 corresponds to the canonical version in `VERSION` at the time of the change.
 
+## 2026-10-27 - 0.9.0 - Minor
+
+- Added a New Download prompt (issue #8). Browser captures of links and
+  videos, clipboard links, dropped links, and Add URL now open a dialog with
+  the address, an editable file name (fixed to the page title for videos),
+  the save folder with Browse, and Start Now, Download Later, and Cancel.
+  Grabber and Bulk transfers still add rows directly. A folder chosen in the
+  prompt keeps server-reported names in that folder. An edited name is kept
+  exactly. Options > Browser > Ask where to save each new download (new
+  `confirm_new_downloads` setting, on by default) turns the prompt off.
+- The bridge replies `{"ok": true, "pending": true}` before the user answers,
+  because the native host waits only 2 seconds. The extension popup, on-video
+  button, and context-menu notification say "Sent to UDM - choose where to
+  save" for that reply.
+- Added progress bars to the download list. `ProgressDelegate` paints the
+  percentage stored in the new `PROGRESS_ROLE` inside the Size cell, using
+  theme tokens. Completed rows are green and paused rows amber. Updates
+  without a total, such as stream post-processing, keep the last percentage.
+- Split `udm/ui/window_downloads.py` and `udm/ui/window_shell.py`, which
+  were near the 300-line limit. The new `window_add_downloads.py` holds
+  adding and the prompt flow, and `window_clipboard.py` holds the clipboard
+  monitor.
+
 ## 2026-10-26 - 0.8.3 - Patch
 
 - Fixed showing the window from the tray. The toggle only checked

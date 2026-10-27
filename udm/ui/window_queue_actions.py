@@ -103,6 +103,7 @@ class QueueActionsController:
                 self.cancelling_workers[download_id] = worker
             self.pending_downloads.pop(download_id, None)
             self.download_requests.pop(download_id, None)
+            self.download_routers.pop(download_id, None)
             self.manually_paused.discard(download_id)
             table.removeRow(row)
         self.reconcile_download_queue()

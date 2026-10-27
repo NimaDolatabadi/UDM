@@ -62,6 +62,7 @@ class CaptureHandlingTests(MainWindowTestCase):
             "type": "download", "url": "https://cdn.example/get?id=1",
             "filename": "report.pdf", "cookies": "sid=9", "referrer": "https://example.com/",
         }
+        self.manager.config["confirm_new_downloads"] = False
         with patch.object(self.window, "start_worker"):
             self.assertTrue(self.window.handle_bridge_message(message)["ok"])
         table = self.window.downloads_tab.table
@@ -74,6 +75,7 @@ class CaptureHandlingTests(MainWindowTestCase):
 
     def test_captures_join_list_paused_unless_autostart_is_on(self):
         message = {"type": "download", "url": "https://cdn.example/a.zip"}
+        self.manager.config["confirm_new_downloads"] = False
         with patch.object(self.window, "start_worker") as start:
             reply = self.window.handle_bridge_message(message)
             self.assertTrue(reply["paused"])
@@ -134,7 +136,14 @@ class BrowserPageTests(QtTestCase):
         info.assert_called_once()
         self.assertEqual(calls, ["firefox", "opened"])
         self.assertIn("1. Step one.", page.status.text())
-        self.assertEqual(page.values(), {"stream_quality": "720p", "capture_autostart": False})
+        self.assertEqual(
+            page.values(),
+            {
+                "stream_quality": "720p",
+                "confirm_new_downloads": True,
+                "capture_autostart": False,
+            },
+        )
 
     def test_install_failure_is_shown_without_dialog(self):
         def failing_install(browser):

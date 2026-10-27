@@ -55,13 +55,17 @@ class BrowserIntegrationPage(QWidget):
         form.addRow("Browser:", self.browser)
         form.addRow("Default video quality:", self.quality)
         outer.addLayout(form)
+        self.confirm = QCheckBox("Ask where to save each new download")
+        self.confirm.setChecked(bool(config.get("confirm_new_downloads", True)))
+        outer.addWidget(self.confirm)
         self.autostart = QCheckBox("Start captured downloads immediately")
         self.autostart.setChecked(bool(config.get("capture_autostart", False)))
         outer.addWidget(self.autostart)
         outer.addWidget(muted_label(
-            "When off, captured links join the download list paused; start "
-            "them with Resume. The quality chosen in the browser overrides the "
-            "default."
+            "When asking, a prompt offers the save folder, Start Now, and "
+            "Download Later. Otherwise captured links join the download list "
+            "paused unless they start immediately. The quality chosen in the "
+            "browser overrides the default."
         ))
 
         buttons = QHBoxLayout()
@@ -113,5 +117,6 @@ class BrowserIntegrationPage(QWidget):
         """Return the settings owned by this page."""
         return {
             "stream_quality": self.quality.currentText(),
+            "confirm_new_downloads": self.confirm.isChecked(),
             "capture_autostart": self.autostart.isChecked(),
         }

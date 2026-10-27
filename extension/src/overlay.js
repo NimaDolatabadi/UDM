@@ -160,9 +160,11 @@
     } catch (error) {
       reply = { ok: false, error: "The extension was reloaded; refresh this page." };
     }
-    const added = reply?.paused === false
-      ? "Downloading in UDM"
-      : "Added to the UDM download list";
+    const added = reply?.pending
+      ? "Sent to UDM - choose where to save"
+      : reply?.paused === false
+        ? "Downloading in UDM"
+        : "Added to the UDM download list";
     setMessage(reply?.ok ? added : (reply?.error ?? "UDM did not answer"),
       reply?.ok ? "ok" : "error");
     if (reply?.ok) setTimeout(() => { panel.hidden = true; hide(); }, 1200);

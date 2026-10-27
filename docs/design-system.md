@@ -206,6 +206,12 @@ height rhythm so the interface reads as one system.
 - Chunk: `accent`. Use `status.success` on completion and `status.warning` when
   paused if a state color is available.
 - Center the percentage text using `text.primary`.
+- In the download list, `ProgressDelegate` (`udm/ui/progress_delegate.py`)
+  paints the bar inside the Size cell, inset by `space.xs`, with the text
+  `<percent>%  <downloaded> / <total>`. The text is elided from the right, so
+  a narrow column drops the sizes before the percentage. Completed rows use
+  `status.success` and paused rows `status.warning`. Rows whose total size is
+  unknown show plain text.
 
 ### Scrollbars
 
@@ -316,6 +322,13 @@ Application and switching:
   `apply_theme` for a live switch with no restart.
 
 Modal layouts:
+
+- The New Download dialog (`udm/ui/download_prompt.py`) shows the file name as
+  a heading. Below it is a form with a read-only Address field, the File name
+  (disabled for videos, which use the page title), and Save to with a
+  secondary Browse button. Footer actions are right-aligned: secondary Cancel
+  and Download Later, then the primary Start Now, which has focus. It stays on
+  top because captures arrive while the browser is in front.
 
 - The Options dialog uses a left sidebar (`QListWidget#settingsNav`) plus a
   `QStackedWidget` of pages, each with a heading and generous spacing.

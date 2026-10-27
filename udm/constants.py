@@ -12,7 +12,10 @@ DEFAULT_CONFIG = {
     "segments": 8,
     "max_concurrent": 4,
     "stream_quality": "Best",
-    # Captured downloads are added paused unless the user opts into autostart.
+    # Single new downloads open a prompt for the folder and Start Now or
+    # Download Later.
+    "confirm_new_downloads": True,
+    # Without the prompt, captures are added paused unless this is enabled.
     "capture_autostart": False,
     # Empty means the user's Downloads folder; categories are created inside.
     "download_dir": "",

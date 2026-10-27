@@ -7,6 +7,7 @@ from udm.startup import sync_system_startup
 from udm.ui.window_actions import WindowActions
 from udm.ui.window_bridge import BridgeController
 from udm.ui.window_bulk import BulkController
+from udm.ui.window_clipboard import ClipboardController
 from udm.ui.window_downloads import DownloadController
 from udm.ui.window_grabber import GrabberController
 from udm.ui.window_shell import WindowShell
@@ -18,6 +19,7 @@ class MainWindow(
     WindowActions,
     BridgeController,
     BulkController,
+    ClipboardController,
     GrabberController,
     DownloadController,
     TorrentController,
@@ -35,6 +37,8 @@ class MainWindow(
         self.pending_downloads = {}
         # Captured browser requests keyed by download identifier.
         self.download_requests = {}
+        # Destination routers for downloads whose folder or name the user set.
+        self.download_routers = {}
         self.bridge_server = None
         self.torrent_engine = None
         self.torrent_timer = None

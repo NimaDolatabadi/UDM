@@ -6,7 +6,7 @@ from PyQt6.QtWidgets import QSystemTrayIcon
 
 from udm import __version__, paths
 from udm.bridge.server import BridgeServer
-from udm.capture import STREAM_KIND, CaptureRequest
+from udm.capture import CaptureRequest
 
 _CAPTURE_TYPES = ("download", "stream")
 
@@ -50,13 +50,15 @@ class BridgeController:
         except ValueError as error:
             logging.warning("Rejected bridge message: %s", error)
             return {"ok": False, "error": str(error)}
+        if self.prompts_for_downloads():
+            # Reply before the user answers: the native host stops waiting
+            # after a few seconds, so the choice is made in the prompt.
+            self.offer_download(request.url, request)
+            return {"ok": True, "pending": True}
         # Like a download manager's "Download Later", captures join the list
-        # paused so the user starts them from the queue.
+        # paused unless the user opted into starting them.
         paused = not self.config_manager.config.get("capture_autostart", False)
-        if request.kind == STREAM_KIND:
-            self.add_stream(request, start_paused=paused)
-        else:
-            self.add_to_downloads(request.url, start_paused=paused, request=request)
+        self.queue_download(request.url, request, start_paused=paused)
         self._announce_capture(request, paused)
         return {"ok": True, "paused": paused}
 

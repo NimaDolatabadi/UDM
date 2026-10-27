@@ -77,7 +77,9 @@ function showMessage(text, state = "") {
 async function send(type, url, extra) {
   showMessage("Sending to UDM...");
   const reply = await sendToUdm(await buildRequest(type, url, extra));
-  const added = reply.paused === false ? "Downloading in UDM" : "Added to the UDM download list";
+  const added = reply.pending
+    ? "Sent to UDM - choose where to save"
+    : reply.paused === false ? "Downloading in UDM" : "Added to the UDM download list";
   showMessage(reply.ok ? added : reply.error, reply.ok ? "success" : "danger");
   if (reply.ok) {
     $("qualityBox").hidden = true;
