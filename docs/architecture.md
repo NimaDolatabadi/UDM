@@ -47,6 +47,7 @@ udm/
     browsers.py           supported browsers and host directories
     extension_build.py    per-engine extension assembly
     installer.py          per-browser installation
+    safari.py             Safari extension app assembly and signing
   i18n/                   translation catalogs
   torrent/
     engine.py             libtorrent session and resume files

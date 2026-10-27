@@ -5,6 +5,8 @@ from pathlib import Path
 
 CHROMIUM = "chromium"
 FIREFOX = "firefox"
+# Safari loads the extension from an app; see udm.bridge.safari.
+SAFARI = "safari"
 
 
 @dataclass(frozen=True)
@@ -13,7 +15,8 @@ class Browser:
 
     ``host_dirs`` are relative to ``~/Library/Application Support``. Some
     Chromium forks also read Google Chrome's directory, so a browser may list
-    several and the installer writes the host manifest to each.
+    several and the installer writes the host manifest to each. Safari has
+    none, because it reaches UDM through its own app extension.
     """
 
     key: str
@@ -48,6 +51,7 @@ BROWSERS = (
         ("Firefox.app", "Firefox Developer Edition.app", "Firefox Nightly.app"),
         ("Mozilla/NativeMessagingHosts",), "about:debugging#/runtime/this-firefox",
     ),
+    Browser("safari", "Safari", SAFARI, ("Safari.app",), (), ""),
     Browser(
         "edge", "Microsoft Edge", CHROMIUM, ("Microsoft Edge.app",),
         ("Microsoft Edge/NativeMessagingHosts",), "edge://extensions",

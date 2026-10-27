@@ -5,6 +5,7 @@ import logging
 from PyQt6.QtWidgets import QSystemTrayIcon
 
 from udm import __version__, paths
+from udm.bridge.native_host import probe_formats
 from udm.bridge.server import BridgeServer
 from udm.capture import CaptureRequest
 
@@ -20,7 +21,11 @@ class BridgeController:
         The caller must ensure no other instance owns the socket (see
         :func:`udm.bridge.server.instance_is_running`).
         """
-        self.bridge_server = BridgeServer(self.handle_bridge_message, self)
+        # Other browsers' native hosts list qualities themselves; Safari's
+        # extension forwards the request here.
+        self.bridge_server = BridgeServer(
+            self.handle_bridge_message, self, background={"formats": probe_formats}
+        )
         listening = self.bridge_server.listen(
             socket_path or paths.bridge_socket_path()
         )

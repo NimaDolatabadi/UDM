@@ -26,8 +26,16 @@ for size in 16 32 128 256 512; do
 done
 iconutil -c icns "$ICONSET" -o "$BUILD/UDM.icns"
 
+echo "Compiling the Safari extension"
+# Users without developer tools get these prebuilt binaries; see
+# udm/bridge/safari.py.
+SAFARI_BIN="$BUILD/safari-bin"
+PYTHONPATH="$ROOT" "$PYTHON" -c \
+    "import sys; from udm.bridge.safari import compile_binaries; compile_binaries(sys.argv[1])" \
+    "$SAFARI_BIN"
+
 echo "Building UDM.app $VERSION"
-UDM_ICON="$BUILD/UDM.icns" "$PYTHON" -m PyInstaller \
+UDM_ICON="$BUILD/UDM.icns" UDM_SAFARI_BIN="$SAFARI_BIN" "$PYTHON" -m PyInstaller \
     --noconfirm --clean \
     --distpath "$BUILD/dist" \
     --workpath "$BUILD/work" \

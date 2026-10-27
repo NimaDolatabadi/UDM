@@ -2,7 +2,7 @@
 
 UDM Capture is a WebExtension that sends browser downloads and playing videos
 to UDM. It works in Chromium-based browsers (Chrome, Edge, Brave, Vivaldi,
-Opera, Arc, Chromium) and in Firefox, from one shared source tree.
+Opera, Arc, Chromium), Firefox, and Safari, from one shared source tree.
 
 ## What It Does
 
@@ -18,6 +18,10 @@ Opera, Arc, Chromium) and in Firefox, from one shared source tree.
   from scripts or POST forms) are paused, offered to UDM, and cancelled on
   acceptance. When UDM is unreachable or refuses a link, the browser handles
   the download normally and the link is not offered again for 30 seconds.
+  Safari has no downloads API, so `links.js` claims left clicks on links that
+  carry a `download` attribute or end in a file extension from
+  `DOWNLOAD_EXTENSIONS`. If UDM refuses or is unreachable, the click is
+  replayed and Safari downloads the file.
 - **Media detection**: network responses are inspected for HLS (`.m3u8`) and
   DASH (`.mpd`) manifests and for video or audio files. Segments and byte-range
   fragments are ignored. Results are listed per tab with a toolbar badge.
@@ -55,12 +59,15 @@ UDM app --> DownloadWorker (direct files) or StreamWorker (yt-dlp + FFmpeg)
 | `extension/src/background.js` | Media listener, menus, and message routing |
 | `extension/src/overlay*.js` | On-video button and panel in a closed Shadow DOM |
 | `extension/src/popup.*` | Toolbar popup |
+| `extension/src/links.js` | Safari only: clicked file links |
+| `extension/safari/*.swift` | Safari app extension handler and containing app |
 | `udm/bridge/protocol.py` | Native framing and the app socket protocol |
 | `udm/bridge/native_host.py` | Host process; launches UDM when it is closed |
 | `udm/bridge/server.py` | Qt socket server and single-instance detection |
 | `udm/bridge/browsers.py` | Supported browsers and host-manifest locations |
 | `udm/bridge/extension_build.py` | Per-engine extension assembly and IDs |
 | `udm/bridge/installer.py` | Writes the extension, host wrapper, and manifests |
+| `udm/bridge/safari.py` | Builds, signs, and registers `UDM Capture.app` |
 | `udm/capture.py` | Validation of incoming requests |
 | `udm/workers/stream.py` | yt-dlp transfers with pause, cancel, and cleanup |
 
@@ -94,7 +101,9 @@ cookie's domain, path, and flags so yt-dlp scopes them correctly.
 
 The native host answers `formats` itself with `udm.workers.format_probe`
 (about 3 seconds for YouTube), so listing qualities neither blocks nor starts
-the desktop app. Sizes are reported by the site or estimated from bitrate and
+the desktop app. Safari's handler cannot run Python, so it forwards `formats`
+to the app, which probes on a worker thread (`BridgeServer` `background`
+handlers) and replies when done. Sizes are reported by the site or estimated from bitrate and
 duration.
 
 `CaptureRequest.from_message` accepts only HTTP and HTTPS URLs, string fields
@@ -129,6 +138,37 @@ step is manual:
 
 After updating UDM, install again and click Reload on the extension card.
 
+### Safari
+
+Safari has no native-messaging hosts. It loads web extensions from an app
+extension inside an app, and delivers `runtime.sendNativeMessage` to that app
+extension. Installing for Safari therefore writes
+`~/Library/Application Support/UDM/safari/UDM Capture.app`:
+
+- `Contents/PlugIns/UDM Capture Extension.appex` holds the web extension
+  (built with `manifest.safari.json`) in `Resources/` and the Swift handler
+  `extension/safari/SafariWebExtensionHandler.swift`. The handler does the
+  native host's job: it forwards each message to the bridge socket and opens
+  UDM through Launch Services when it is closed. Its Info.plist records the
+  socket path (`UDMBridgeSocket`) and the UDM bundle (`UDMAppPath`, empty for
+  source runs, which must already be running).
+- The containing app (`ContainerApp.swift`) only opens the extension in
+  Safari's settings and quits.
+- Both are ad hoc signed with the App Sandbox. The sandbox blocks Unix
+  sockets outside the container, and no standard entitlement allows one, so
+  the app extension carries a `temporary-exception.sbpl` rule naming only the
+  bridge socket. The app extension is then registered with `pluginkit -a`.
+
+Release builds ship the compiled Swift binaries (`build_dmg.sh` compiles them
+into `safari-bin`). Source runs compile them with `xcrun swiftc`, which needs
+the Xcode Command Line Tools.
+
+The extension is unsigned by Apple, so Safari loads it only with Settings >
+Developer > Allow unsigned extensions, which Safari turns off when it quits.
+Safari also lacks `downloads`, `notifications`, and, for non-persistent
+background scripts, possibly `webRequest`; the scripts check for each.
+Without `webRequest`, the on-video button still offers the page video.
+
 ## Stream Downloads
 
 `StreamWorker` runs yt-dlp with the captured headers and cookies, the
@@ -160,7 +200,5 @@ next progress callback; cancelling removes `.part`, `.ytdl`, and fragment files.
 
 - TODO: Publish to the Chrome Web Store, Edge Add-ons, and addons.mozilla.org,
   adding each store-assigned extension ID to the host manifest.
-- TODO: Safari support. Safari extensions ship inside a macOS app built with
-  Xcode (`xcrun safari-web-extension-converter`) and reach native code through
-  the containing app instead of a host manifest. The shared Manifest V3 source
-  is the starting point.
+- TODO: Sign the Safari app with a Developer ID and distribute it, so Safari
+  keeps the extension enabled without Allow unsigned extensions.

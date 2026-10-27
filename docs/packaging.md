@@ -38,6 +38,8 @@ push to `main` and every pull request.
 - The project dependencies plus PyInstaller:
   `pip install -r packaging/requirements-build.txt`.
 - `sips`, `iconutil`, `codesign`, and `hdiutil`, which ship with macOS.
+- The Swift compiler from the Xcode Command Line Tools
+  (`xcode-select --install`), for the Safari extension.
 
 ### Building
 
@@ -48,13 +50,15 @@ conda run -n mine packaging/macos/build_dmg.sh
 The script:
 
 1. renders `logo.png` into an `.icns` icon;
-2. runs PyInstaller with `packaging/udm.spec`, bundling the `udm`
+2. compiles the Safari extension's Swift handler and containing app into
+   `build/macos/safari-bin` (see `docs/browser-integration.md`);
+3. runs PyInstaller with `packaging/udm.spec`, bundling the `udm`
    package, the `extension/` source, `logo.png`, `VERSION`, yt-dlp with its
    extractors and the `yt-dlp-ejs` challenge scripts, the Deno runtime used
-   for YouTube, truststore, libtorrent, and the imageio-ffmpeg FFmpeg binary,
-   and registers the `magnet` URL scheme and `.torrent` document type;
-3. re-signs the bundle ad hoc so Apple silicon accepts the nested binaries;
-4. writes `dist/UDM-<version>-macos-<arch>.dmg` containing `UDM.app` and an
+   for YouTube, truststore, libtorrent, the imageio-ffmpeg FFmpeg binary,
+   and the Safari binaries (`UDM_SAFARI_BIN`), and registers the `magnet` URL scheme and `.torrent` document type;
+4. re-signs the bundle ad hoc so Apple silicon accepts the nested binaries;
+5. writes `dist/UDM-<version>-macos-<arch>.dmg` containing `UDM.app` and an
    `Applications` shortcut.
 
 Intermediate files go to `build/macos/`. Both `build/` and `dist/` are ignored
@@ -118,7 +122,8 @@ there on first launch.
 
 - TODO: Sign with a Developer ID certificate and notarize with `notarytool`
   so Gatekeeper accepts the first launch. This is also required before an App
-  Store or Safari-extension release.
+  Store release or a Safari extension that loads without Allow unsigned
+  extensions.
 - TODO: Build a universal (arm64 and x86_64) bundle; the current FFmpeg wheel
   matches only the build machine's architecture, so releases ship one DMG per
   architecture.

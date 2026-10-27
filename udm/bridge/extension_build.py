@@ -2,7 +2,8 @@
 
 The source in ``extension/`` holds shared scripts plus a base manifest and a
 per-engine overlay. Chromium needs a service worker and a fixed public key;
-Firefox needs background scripts and a Gecko add-on ID.
+Firefox needs background scripts and a Gecko add-on ID; Safari needs
+background scripts, drops the APIs it lacks, and adds link-click capture.
 """
 
 import base64
@@ -22,17 +23,21 @@ def source_dir():
 
 
 def load_manifest(engine, source=None):
-    """Return the merged manifest for ``engine`` (``chromium`` or ``firefox``).
+    """Return the merged manifest for ``engine`` (see ``udm.bridge.browsers``).
 
     Overlay keys replace base keys, except ``permissions``, which the overlay
-    extends so an engine can add permissions the other engine rejects.
+    extends so an engine can add permissions the others reject, and
+    ``exclude_permissions``, which removes base permissions the engine lacks.
     """
     source = Path(source or source_dir())
     manifest = _read_json(source / "manifest.base.json")
     overlay = _read_json(source / f"manifest.{engine}.json")
     extra = overlay.pop("permissions", [])
+    excluded = set(overlay.pop("exclude_permissions", []))
     manifest.update(overlay)
-    manifest["permissions"] = manifest.get("permissions", []) + extra
+    manifest["permissions"] = [
+        name for name in manifest.get("permissions", []) + extra if name not in excluded
+    ]
     return manifest
 
 

@@ -27,7 +27,7 @@ categorization, scheduling, and system tray integration.
 - **Custom DNS**: Resolves HTTP and HTTPS destinations through configured DNS
   servers while retaining hostname and certificate validation.
 - **Browser Extension (UDM Capture)**: Chrome, Edge, Brave, Vivaldi, Opera,
-  Arc, Chromium, and Firefox. Captures browser downloads with their cookies,
+  Arc, Chromium, Firefox, and Safari. Captures browser downloads with their cookies,
   detects HLS, DASH, and media files on any page, and adds an IDM-style
   Download button at the top-right of playing videos. Install it from
   Options > Browser.
@@ -140,6 +140,11 @@ follow the steps shown:
 - **Firefox**: open `about:debugging#/runtime/this-firefox`, click Load
   Temporary Add-on, and choose `manifest.json` in that folder. Firefox removes
   temporary add-ons when it quits.
+- **Safari**: UDM writes `UDM Capture.app` and opens Safari's settings. Turn
+  on Settings > Advanced > Show features for web developers, then Developer >
+  Allow unsigned extensions (Safari turns this off when it quits), and enable
+  UDM Capture in the Extensions tab. On Safari, clicked file links are sent to
+  UDM instead of all browser downloads.
 
 After updating UDM, install again and click Reload on the extension card.
 Details and the message protocol are in `docs/browser-integration.md`.
@@ -205,7 +210,7 @@ UDM_DEV=1 conda run -n mine python MACDM.py
 - Persistent proxy, segment, startup, category, schedule, and language settings.
 - Token-based design system with Refined Dark, Light, and OS-following System
   themes, live theme switching, and matching line icons.
-- Browser extension for Chromium browsers and Firefox with download capture,
+- Browser extension for Chromium browsers, Firefox, and Safari with download capture,
   stream detection, an on-video Download button, and quality selection.
 - yt-dlp stream downloads (including YouTube) merged to MP4 with FFmpeg.
 - Single-instance app that the browser can launch on demand.
@@ -215,7 +220,7 @@ UDM_DEV=1 conda run -n mine python MACDM.py
 ### Future Development
 
 - Torrent seeding, port, and per-file options.
-- Store-published extensions and a Safari version.
+- Store-published extensions, including a signed Safari version.
 - Global and per-download speed limits.
 - Queue ordering and sequential processing.
 - Expanded secure proxy support.

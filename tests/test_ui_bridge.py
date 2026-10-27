@@ -49,6 +49,26 @@ class BridgeServerTests(QtTestCase):
                 server.close()
             self.assertFalse(instance_is_running(path))
 
+    def test_background_types_reply_from_a_worker_thread(self):
+        main = threading.get_ident()
+        threads = []
+
+        def probe(message):
+            threads.append(threading.get_ident())
+            return {"ok": True, "qualities": [message["url"]]}
+
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "bridge.sock"
+            server = BridgeServer(lambda m: {"ok": True}, background={"formats": probe})
+            self.assertTrue(server.listen(path))
+            try:
+                reply = self._call(path, {"type": "formats", "url": "https://v.example/w"})
+                self.assertEqual(reply["qualities"], ["https://v.example/w"])
+                self.assertEqual(self._call(path, {"type": "ping"}), {"ok": True})
+            finally:
+                server.close()
+        self.assertNotEqual(threads, [main])
+
 
 class CaptureHandlingTests(MainWindowTestCase):
     def test_ping_and_invalid_messages(self):

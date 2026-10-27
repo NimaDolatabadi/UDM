@@ -7,7 +7,7 @@ import tempfile
 import unittest
 
 from udm.bridge import extension_build, installer
-from udm.bridge.browsers import BROWSERS, CHROMIUM, FIREFOX, browser_by_key
+from udm.bridge.browsers import BROWSERS, CHROMIUM, FIREFOX, SAFARI, browser_by_key
 from udm.bridge.protocol import NATIVE_HOST_NAME
 
 EXPECTED_CHROMIUM_ID = "himmjkpdagijcljpofjkgoagloapginc"
@@ -121,8 +121,9 @@ class InstallerTests(unittest.TestCase):
         keys = [browser.key for browser in BROWSERS]
         self.assertEqual(len(keys), len(set(keys)))
         for browser in BROWSERS:
-            self.assertIn(browser.engine, (CHROMIUM, FIREFOX))
-            self.assertTrue(browser.host_dirs)
+            self.assertIn(browser.engine, (CHROMIUM, FIREFOX, SAFARI))
+            # Only Safari reaches UDM without a host manifest.
+            self.assertEqual(bool(browser.host_dirs), browser.engine != SAFARI)
 
 
 if __name__ == "__main__":

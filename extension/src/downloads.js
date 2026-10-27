@@ -104,9 +104,11 @@ async function captureCreated(item) {
 /*
  * Register the earliest capture point each browser offers. Chromium has
  * onDeterminingFilename but no blocking webRequest under Manifest V3;
- * Firefox has blocking webRequest but no onDeterminingFilename.
+ * Firefox has blocking webRequest but no onDeterminingFilename. Safari has
+ * neither, so links.js sends clicked file links ("captureLink") instead.
  */
 function installDownloadCapture() {
+  if (!api.downloads) return;
   if (api.downloads.onDeterminingFilename) {
     api.downloads.onDeterminingFilename.addListener(captureBeforeFilename);
     return;

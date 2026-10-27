@@ -11,7 +11,8 @@ const ICON = "icons/icon-128.png";
 
 installDownloadCapture();
 
-api.webRequest.onHeadersReceived.addListener(
+// Safari may not expose webRequest; the page-video button still works there.
+api.webRequest?.onHeadersReceived.addListener(
   (details) => {
     if (details.tabId < 0 || !isHttpUrl(details.url)) return;
     const media = classifyResponse(details.url, details.responseHeaders);
@@ -66,7 +67,9 @@ async function mediaRequest(source, page) {
   return buildRequest("stream", page.referrer, { title: page.title });
 }
 
+/* Report a context-menu result; Safari has no notifications API. */
 function notify(reply, request) {
+  if (!api.notifications) return;
   api.notifications.create({
     type: "basic",
     iconUrl: ICON,
@@ -86,6 +89,10 @@ api.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
   if (message?.type === "capture") {
     captureFromPage(message.request).then(sendResponse);
+    return true;
+  }
+  if (message?.type === "captureLink") {
+    offerToUdm(message.url, message).then(sendResponse, () => sendResponse(false));
     return true;
   }
   if (message?.type === "formats") {

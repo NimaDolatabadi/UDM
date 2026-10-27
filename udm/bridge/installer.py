@@ -2,7 +2,8 @@
 
 Browsers do not let applications add extensions silently, so installation
 prepares everything the browser needs and then guides the user through the
-one manual step: loading the unpacked extension folder.
+remaining manual step: loading the unpacked extension folder, or turning the
+extension on in Safari's settings.
 """
 
 from dataclasses import dataclass
@@ -12,8 +13,8 @@ import shlex
 import subprocess
 
 from udm import __version__, paths
-from udm.bridge import extension_build
-from udm.bridge.browsers import FIREFOX
+from udm.bridge import extension_build, safari
+from udm.bridge.browsers import FIREFOX, SAFARI
 from udm.bridge.protocol import NATIVE_HOST_NAME
 
 HOST_FLAG = "--native-messaging-host"
@@ -21,7 +22,11 @@ HOST_FLAG = "--native-messaging-host"
 
 @dataclass(frozen=True)
 class InstallResult:
-    """Paths written by an installation and the remaining manual steps."""
+    """Paths written by an installation and the remaining manual steps.
+
+    For Safari, ``extension_dir`` is ``UDM Capture.app`` and there is no host
+    wrapper or host manifest.
+    """
 
     extension_dir: Path
     host_wrapper: Path
@@ -33,6 +38,11 @@ def install(browser, home=None, data_dir=None, host_command=None, source=None):
     """Prepare ``browser`` to use the extension and return what was written."""
     home = Path(home or Path.home())
     data_dir = Path(data_dir or paths.data_dir())
+    if browser.engine == SAFARI:
+        app = safari.install(
+            data_dir, __version__, paths.bridge_socket_path(), paths.app_bundle(), source
+        )
+        return InstallResult(app, None, (), setup_steps(browser, app))
     extension_dir = extension_build.build_extension(
         browser.engine,
         data_dir / "extension" / browser.engine,
@@ -92,6 +102,17 @@ def host_manifest(engine, wrapper, source=None):
 
 def setup_steps(browser, extension_dir):
     """Return the manual steps that finish installation in ``browser``."""
+    if browser.engine == SAFARI:
+        return (
+            "In Safari, choose Safari > Settings > Advanced and turn on "
+            '"Show features for web developers".',
+            'In the Developer tab, turn on "Allow unsigned extensions". Safari '
+            "turns this off when it quits; turn it on again after restarting "
+            "Safari.",
+            "In the Extensions tab, turn on UDM Capture, then click Edit "
+            'Websites and choose Allow for "Other websites".',
+            "After updating UDM, install again.",
+        )
     if browser.engine == FIREFOX:
         return (
             f"Open {browser.extensions_url} in Firefox.",
@@ -112,13 +133,18 @@ def setup_steps(browser, extension_dir):
 def open_setup_pages(browser, result, runner=subprocess.run):
     """Reveal the extension folder and open the browser's extensions page.
 
-    Failures are ignored: some browsers refuse internal URLs from the command
-    line, and the written steps still explain where to go.
+    For Safari, opening ``UDM Capture.app`` registers the extension and shows
+    it in Safari's settings. Failures are ignored: some browsers refuse
+    internal URLs from the command line, and the written steps still explain
+    where to go.
     """
-    commands = [["open", "-R", str(result.extension_dir / "manifest.json")]]
-    app = browser.app_path()
-    if app is not None:
-        commands.append(["open", "-a", str(app), browser.extensions_url])
+    if browser.engine == SAFARI:
+        commands = [["open", str(result.extension_dir)]]
+    else:
+        commands = [["open", "-R", str(result.extension_dir / "manifest.json")]]
+        app = browser.app_path()
+        if app is not None:
+            commands.append(["open", "-a", str(app), browser.extensions_url])
     for command in commands:
         try:
             runner(command, check=False, timeout=10)

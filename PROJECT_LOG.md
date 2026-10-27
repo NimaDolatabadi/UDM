@@ -3,6 +3,30 @@
 This file records project changes in reverse chronological order. Every entry
 corresponds to the canonical version in `VERSION` at the time of the change.
 
+## 2026-10-27 - 0.10.0 - Minor
+
+- Added Safari to Options > Browser. Safari has no native-messaging hosts,
+  so installing writes `UDM Capture.app` to the data directory: an app
+  extension holding the web extension (new `manifest.safari.json`) and a
+  Swift handler (`extension/safari/`) that relays messages to the bridge
+  socket and opens UDM when it is closed. A containing app opens Safari's
+  extension settings. `udm/bridge/safari.py` writes the Info.plists and
+  sandbox entitlements, signs ad hoc, and registers the extension with
+  `pluginkit`. A `temporary-exception.sbpl` entitlement allows only the
+  bridge socket, because the App Sandbox blocks Unix sockets outside the
+  container. Safari loads the extension only with Developer > Allow unsigned
+  extensions, which it turns off when it quits.
+- Safari lacks the downloads API, so the new `links.js` content script (Safari
+  manifest only) sends clicked file links to UDM and replays the click when UDM
+  refuses or is unreachable. The background script now checks for the
+  `webRequest` and `notifications` APIs before using them. Manifest overlays can
+  drop base permissions with `exclude_permissions`.
+- `BridgeServer` takes `background` handlers that run on a worker thread. The
+  app now answers `formats` this way for Safari, whose handler cannot run
+  yt-dlp.
+- `build_dmg.sh` compiles the Swift binaries, and the spec bundles them as
+  `safari-bin`. Source runs compile them with `xcrun swiftc`.
+
 ## 2026-10-27 - 0.9.0 - Minor
 
 - Added a New Download prompt (issue #8). Browser captures of links and
