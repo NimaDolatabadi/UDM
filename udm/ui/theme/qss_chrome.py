@@ -101,12 +101,41 @@ QDialog {{
 }}
 
 QLabel[heading="true"] {{
-    font-size: 18px;
-    font-weight: 600;
+    font-size: {theme.font_heading}px;
+    font-weight: {theme.weight_heading};
     padding-bottom: {theme.space_sm}px;
+}}
+QLabel[section="true"] {{
+    font-size: {theme.font_title}px;
+    font-weight: {theme.weight_title};
+    padding-top: {theme.space_sm}px;
 }}
 QLabel[muted="true"] {{
     color: {theme.text_muted};
+}}
+QLabel[tone="warning"] {{
+    color: {theme.status_warning};
+}}
+
+QFrame#segmented {{
+    background: {theme.bg_sunken};
+    border: 1px solid {theme.border_subtle};
+    border-radius: {theme.radius_md}px;
+}}
+QFrame#segmented QPushButton {{
+    background: transparent;
+    color: {theme.text_muted};
+    border: 1px solid transparent;
+    border-radius: {theme.radius_sm}px;
+    padding: {theme.space_xs}px {theme.space_lg}px;
+}}
+QFrame#segmented QPushButton:hover {{
+    color: {theme.text_primary};
+}}
+QFrame#segmented QPushButton:checked {{
+    background: {theme.accent};
+    color: {theme.accent_text};
+    border: 1px solid {theme.accent};
 }}
 
 QListWidget#settingsNav {{

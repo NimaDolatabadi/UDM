@@ -21,9 +21,11 @@ categorization, scheduling, and system tray integration.
 - **Download Scheduler**: Enforces date ranges, time windows, recurrence, and
   per-queue concurrency limits.
 - **Controlled Concurrency**: Exposes a global maximum of four simultaneous
-  main-queue downloads in Options → Network; explicit schedules retain their
+  main-queue downloads in Options → Downloads; explicit schedules retain their
   own limits. The default Scheduler row directs configuration to the effective
   global setting instead of presenting an inert limit editor.
+- **HTTP and SOCKS5 Proxies**: Options → Network routes file and video
+  downloads through an HTTP or SOCKS5 proxy, with optional credentials.
 - **Custom DNS**: Resolves HTTP and HTTPS destinations through configured DNS
   servers while retaining hostname and certificate validation.
 - **Browser Extension (UDM Capture)**: Chrome, Edge, Brave, Vivaldi, Opera,
@@ -131,8 +133,9 @@ python MACDM.py
 
 ### 4. Install the Browser Extension
 
-Open Options > Browser, choose your browser, and click Install Extension, then
-follow the steps shown:
+Open Options > Browser, choose your browser, and click Install Extension. UDM
+explains what it will write and which apps it will open, and installs only
+after you click Install. Then follow the steps shown:
 
 - **Chrome, Edge, Brave, Vivaldi, Opera, Arc, Chromium**: on the extensions
   page enable Developer mode, click Load unpacked, and choose the folder UDM
@@ -159,7 +162,7 @@ Details and the message protocol are in `docs/browser-integration.md`.
   and so on, or Audio only) from the list with approximate sizes.
 - Each captured item opens UDM's **New Download** prompt: pick the folder and
   press **Start Now** or **Download Later**, or **Cancel**. Turn the prompt
-  off with Options > Browser > Ask where to save each new download; captured
+  off with Options > Downloads > Ask where to save each new download; captured
   items then join the list paused unless Start captured downloads immediately
   is on.
 - The toolbar popup shows the connection status, toggles, and every media
@@ -223,7 +226,7 @@ UDM_DEV=1 conda run -n mine python MACDM.py
 - Store-published extensions, including a signed Safari version.
 - Global and per-download speed limits.
 - Queue ordering and sequential processing.
-- Expanded secure proxy support.
+- Proxy support for torrents.
 
 ## Tests
 

@@ -136,7 +136,7 @@ class CaptureHandlingTests(MainWindowTestCase):
 
 
 class BrowserPageTests(QtTestCase):
-    def test_install_reports_steps_and_returns_quality(self):
+    def test_install_asks_first_then_reports_steps(self):
         calls = []
         result = InstallResult(Path("/tmp/ext"), Path("/tmp/host"), (), ("Step one.",))
 
@@ -144,32 +144,45 @@ class BrowserPageTests(QtTestCase):
             calls.append(browser.key)
             return result
 
+        def confirm(browser, parent):
+            calls.append(f"confirm {browser.key}")
+            return True
+
         page = BrowserIntegrationPage(
-            {"stream_quality": "720p"},
+            {},
             install=fake_install,
             open_pages=lambda browser, res: calls.append("opened"),
+            confirm=confirm,
         )
         index = page.browser.findData(browser_by_key("firefox"))
         page.browser.setCurrentIndex(index)
         with patch("udm.ui.options_browser_page.QMessageBox.information") as info:
             self.assertIs(page.install_selected(), result)
         info.assert_called_once()
-        self.assertEqual(calls, ["firefox", "opened"])
+        self.assertEqual(calls, ["confirm firefox", "firefox", "opened"])
         self.assertIn("1. Step one.", page.status.text())
-        self.assertEqual(
-            page.values(),
-            {
-                "stream_quality": "720p",
-                "confirm_new_downloads": True,
-                "capture_autostart": False,
-            },
+
+    def test_declining_the_confirmation_installs_nothing(self):
+        calls = []
+        page = BrowserIntegrationPage(
+            {},
+            install=lambda browser: calls.append("installed"),
+            open_pages=lambda browser, res: calls.append("opened"),
+            confirm=lambda browser, parent: False,
         )
+        with patch("udm.ui.options_browser_page.QMessageBox.information") as info:
+            self.assertIsNone(page.install_selected())
+        info.assert_not_called()
+        self.assertEqual(calls, [])
 
     def test_install_failure_is_shown_without_dialog(self):
         def failing_install(browser):
             raise OSError("read-only")
 
-        page = BrowserIntegrationPage({}, install=failing_install, open_pages=None)
+        page = BrowserIntegrationPage(
+            {}, install=failing_install, open_pages=None,
+            confirm=lambda browser, parent: True,
+        )
         with patch("udm.ui.options_browser_page.QMessageBox.information") as info:
             self.assertIsNone(page.install_selected())
         info.assert_not_called()
