@@ -39,7 +39,9 @@ corresponds to the canonical version in `VERSION` at the time of the change.
 - The Scheduler now points to Options > Downloads for the default queue's
   limit. Updated the README, architecture, browser integration, packaging,
   and design-system docs. Added tests for proxy URLs, the new pages, and the
-  install confirmation.
+  install confirmation. `docs/browser-integration.md` now lists the
+  developer-style install and the macOS-only host registration as limits,
+  and links the follow-up plan in GitHub issues #10 to #16.
 
 ## 2026-10-27 - 0.10.0 - Minor
 
