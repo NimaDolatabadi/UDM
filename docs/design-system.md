@@ -142,6 +142,10 @@ role; do not set ad hoc font sizes in components.
 | `title`   | 15px | medium   | Section and dialog titles    |
 | `heading` | 18px | semibold | Primary headings             |
 
+These map to the `font_body`, `font_title`, and `font_heading` size tokens and
+the `weight_title` (500) and `weight_heading` (600) weight tokens in
+`tokens.py`.
+
 ## Component Specifications
 
 Each component references only tokens. Where a state is not listed, it inherits
@@ -181,6 +185,35 @@ height rhythm so the interface reads as one system.
   with `accent.text`.
 - Maintain a minimum width for combo, date, and time controls so labels never
   clip.
+- Combo boxes and spin boxes reserve an arrow column `xl` wide on the right.
+  The combo arrow and the spin-box steppers use the line `chevron-down` and
+  `chevron-up` glyphs in `text.muted`, `md` square. Steppers are split by an
+  `border.subtle` rule, hover `bg.raised`, pressed `bg.base`.
+- QSS cannot pad a spin box's internal text field, so create spin boxes with
+  `settings_layout.spin_box()`, which insets the value by `sm` to match line
+  edits.
+
+### Segmented Control
+
+- Used for a short, mutually exclusive choice that changes which fields
+  appear, such as the proxy type (`udm/ui/segmented_control.py`).
+- Container `QFrame#segmented`: background `bg.sunken`, border
+  `border.subtle`, radius `md`, inner inset of half `xs`.
+- Segments: transparent with `text.muted` text, radius `sm`, padding `xs` by
+  `lg`; hover raises the text to `text.primary`. The selected segment fills
+  with `accent` and `accent.text`.
+- Segments never become the dialog's default button.
+
+### Settings Pages
+
+- Each page has a `heading` label, then groups introduced by a section label
+  (`QLabel[section="true"]`: `title` size, medium weight, `sm` top padding).
+- Forms use left-aligned labels in a shared 160px column
+  (`settings_layout.LABEL_WIDTH`) so fields line up across pages. Only line
+  edits stretch to the page width; combo boxes and spin boxes keep their
+  natural width.
+- Helper and consequence text uses muted labels directly below the control
+  it explains. Warnings use `QLabel[tone="warning"]` in `status.warning`.
 
 ### Tables, Trees, and Lists
 
@@ -304,7 +337,9 @@ The system lives in the `udm/ui/theme/` package:
 - `glyphs.py`: the line-icon SVG data, `render_glyph(name, color, size)`, and the
   `ACTION_GLYPHS` / `TAB_GLYPHS` maps.
 - `assets.py`: renders glyphs that QSS must reference by file (the checkbox
-  checkmark) into a cache directory and returns their paths.
+  checkmark and the combo and spin-box chevrons) into a cache directory, and
+  `themed_stylesheet(theme)` builds the stylesheet with them. The window and
+  the development reloader both apply the theme through it.
 - `__init__.py`: the public surface, including `stylesheet_for(name)`.
 
 Application and switching:
@@ -331,7 +366,17 @@ Modal layouts:
   top because captures arrive while the browser is in front.
 
 - The Options dialog uses a left sidebar (`QListWidget#settingsNav`) plus a
-  `QStackedWidget` of pages, each with a heading and generous spacing.
+  `QStackedWidget` of pages: General, Downloads, Network, Categories, and
+  Browser. Pages use `xl` side margins and `lg` top and bottom margins.
+- The Downloads page holds Save to, Video quality, a Speed group
+  (Simultaneous downloads, Connections per file), and a New downloads group
+  of checkboxes. "Start captured downloads immediately" is disabled while
+  "Ask where to save" is on, and a muted line says which one decides.
+- The Network page shows a Proxy group with a segmented control (No proxy,
+  HTTP, SOCKS5) and a muted line describing the effect. The Server row
+  (host plus a Port spin box that shows "Default" at zero), Username, and a
+  masked Password appear only when a proxy type is selected. A DNS group
+  follows.
 - The Scheduler dialog lists schedules in a table with Schedule, Enabled, and
   Actions columns: the enable state is a centered checkbox under the Enabled
   header, and each row shows the schedule name and a plain-language summary.
@@ -339,9 +384,15 @@ Modal layouts:
   stretches and the summary wraps, so the table never scrolls sideways.
 
 - The Options dialog's Browser page (`udm/ui/options_browser_page.py`) holds a
-  browser selector, a video-quality selector, a secondary Install Extension
-  button, and a muted, word-wrapped status label that lists the remaining
-  steps. Shared page and form helpers live in `udm/ui/settings_layout.py`.
+  browser selector with a secondary Install Extension... button beside it, and
+  a muted, word-wrapped status label that lists the remaining steps. Shared
+  page and form helpers live in `udm/ui/settings_layout.py`.
+- Install Extension... first opens the Install Browser Extension dialog
+  (`udm/ui/extension_install_dialog.py`): a heading naming the browser, a
+  "UDM will:" list of bulleted actions with hanging indents, the target
+  folder in muted text, a `tone="warning"` line when the browser is not in
+  Applications, and a muted note on the manual steps that remain. Footer:
+  secondary Cancel, then the primary Install, which has focus.
 
 Browser extension surfaces:
 

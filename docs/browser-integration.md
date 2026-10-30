@@ -39,7 +39,7 @@ Opera, Arc, Chromium), Firefox, and Safari, from one shared source tree.
   list.
 - **Ask where and when**: each captured link or video opens UDM's New
   Download prompt with the save folder, Start Now, Download Later, and Cancel.
-  With Options > Browser > Ask where to save each new download turned off,
+  With Options > Downloads > Ask where to save each new download turned off,
   captured links join the download list paused, like Download Later, unless
   Start captured downloads immediately is on.
 
@@ -111,8 +111,10 @@ up to 64 KB, and header fields without line breaks.
 
 ## Installing
 
-In UDM, open Options > Browser, choose a browser, and click Install Extension.
-UDM then:
+In UDM, open Options > Browser, choose a browser, and click Install
+Extension. A confirmation dialog (`udm/ui/extension_install_dialog.py`) lists
+what will be written and opened, with the target folder; nothing changes
+until the user clicks Install. UDM then:
 
 1. builds the unpacked extension into
    `~/Library/Application Support/UDM/extension/<chromium|firefox>/`;
@@ -172,9 +174,9 @@ Without `webRequest`, the on-video button still offers the page video.
 ## Stream Downloads
 
 `StreamWorker` runs yt-dlp with the captured headers and cookies, the
-Options > Network proxy, and up to 16 concurrent fragments (the segment
-setting). The quality chosen in the browser wins; otherwise Options > Browser
-sets the default (Best, 1080p, 720p, 480p, or Audio Only). Within a resolution
+Options > Network proxy, and up to 16 concurrent fragments (the Connections
+per file setting). The quality chosen in the browser wins; otherwise Options >
+Downloads > Video quality sets the default (Best, 1080p, 720p, 480p, or Audio Only). Within a resolution
 H.264 video and AAC audio are preferred so files play in QuickTime and Finder.
 YouTube requires solving JavaScript challenges, which yt-dlp does with the
 Deno runtime (the `deno` wheel, bundled in the app) and the `yt-dlp-ejs`

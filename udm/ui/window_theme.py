@@ -12,10 +12,9 @@ from PyQt6.QtWidgets import QApplication
 from udm.ui.theme import (
     DEFAULT_THEME,
     SYSTEM_OPTION,
-    build_stylesheet,
     resolve_theme,
 )
-from udm.ui.theme.assets import glyph_asset_url
+from udm.ui.theme.assets import themed_stylesheet
 
 
 class ThemeController:
@@ -38,10 +37,7 @@ class ThemeController:
         )
         application = QApplication.instance()
         if application is not None:
-            checkmark = glyph_asset_url("check", self.current_theme.accent_text)
-            application.setStyleSheet(
-                build_stylesheet(self.current_theme, checkmark_url=checkmark)
-            )
+            application.setStyleSheet(themed_stylesheet(self.current_theme))
         # Toolbar icons only exist after create_toolbar; guard the initial call
         # made before the toolbar is built.
         if getattr(self, "toolbar", None) is not None:

@@ -1,10 +1,9 @@
-"""Options page for installing the browser extension and stream settings."""
+"""Options page for installing the browser extension."""
 
 import logging
 import subprocess
 
 from PyQt6.QtWidgets import (
-    QCheckBox,
     QComboBox,
     QHBoxLayout,
     QMessageBox,
@@ -14,21 +13,30 @@ from PyQt6.QtWidgets import (
 
 from udm.bridge import installer
 from udm.bridge.browsers import BROWSERS
-from udm.constants import DEFAULT_CONFIG, STREAM_QUALITY_OPTIONS
-from udm.ui.settings_layout import SCALE, muted_label, settings_form, settings_page
+from udm.ui.extension_install_dialog import confirm_install
+from udm.ui.settings_layout import (
+    SCALE,
+    add_form_row,
+    muted_label,
+    settings_form,
+    settings_page,
+)
 
 
 class BrowserIntegrationPage(QWidget):
-    """Install the extension into a chosen browser and pick stream quality.
+    """Install the extension into a chosen browser.
 
     Installing acts immediately rather than on OK, because it writes browser
-    files instead of changing a stored setting.
+    files instead of changing a stored setting. It asks for confirmation
+    first, since it also opens the browser and Finder.
     """
 
-    def __init__(self, config, parent=None, install=None, open_pages=None):
+    def __init__(self, config, parent=None, install=None, open_pages=None,
+                 confirm=None):
         super().__init__(parent)
         self._install = install or installer.install
         self._open_pages = open_pages or installer.open_setup_pages
+        self._confirm = confirm or confirm_install
         page, outer = settings_page("Browser Integration")
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -36,49 +44,31 @@ class BrowserIntegrationPage(QWidget):
 
         outer.addWidget(muted_label(
             "The UDM Capture extension sends browser downloads and playing "
-            "videos to UDM, and adds a Download button on top of videos."
+            "videos to UDM, and adds a Download button on top of videos. "
+            "Choose how new downloads start in Downloads."
         ))
         form = settings_form()
         self.browser = QComboBox()
-        self.browser.setMinimumWidth(220)
+        self.browser.setMinimumWidth(SCALE.control_md * 8)
         # Installed browsers come first so the likely choice is preselected.
         ordered = sorted(BROWSERS, key=lambda item: not item.is_installed())
         for browser in ordered:
             label = browser.name if browser.is_installed() else f"{browser.name} (not found)"
             self.browser.addItem(label, browser)
-        self.quality = QComboBox()
-        self.quality.setMinimumWidth(220)
-        self.quality.addItems(STREAM_QUALITY_OPTIONS)
-        self.quality.setCurrentText(
-            config.get("stream_quality", DEFAULT_CONFIG["stream_quality"])
-        )
-        form.addRow("Browser:", self.browser)
-        form.addRow("Default video quality:", self.quality)
-        outer.addLayout(form)
-        self.confirm = QCheckBox("Ask where to save each new download")
-        self.confirm.setChecked(bool(config.get("confirm_new_downloads", True)))
-        outer.addWidget(self.confirm)
-        self.autostart = QCheckBox("Start captured downloads immediately")
-        self.autostart.setChecked(bool(config.get("capture_autostart", False)))
-        outer.addWidget(self.autostart)
-        outer.addWidget(muted_label(
-            "When asking, a prompt offers the save folder, Start Now, and "
-            "Download Later. Otherwise captured links join the download list "
-            "paused unless they start immediately. The quality chosen in the "
-            "browser overrides the default."
-        ))
-
-        buttons = QHBoxLayout()
-        buttons.setSpacing(SCALE.space_sm)
-        self.install_button = QPushButton("Install Extension")
+        self.install_button = QPushButton("Install Extension...")
+        self.install_button.setAutoDefault(False)
         self.install_button.clicked.connect(self.install_selected)
-        buttons.addWidget(self.install_button)
-        buttons.addStretch(1)
-        outer.addLayout(buttons)
+        row = QHBoxLayout()
+        row.setSpacing(SCALE.space_sm)
+        row.addWidget(self.browser)
+        row.addWidget(self.install_button)
+        row.addStretch(1)
+        add_form_row(form, "Browser", row)
+        outer.addLayout(form)
 
         self.status = muted_label(
-            "Installing prepares the extension folder and the connection to "
-            "UDM, then opens the browser so you can load it."
+            "UDM explains what installing does and asks before changing "
+            "anything."
         )
         outer.addWidget(self.status)
         outer.addStretch(1)
@@ -88,8 +78,14 @@ class BrowserIntegrationPage(QWidget):
         return self.browser.currentData()
 
     def install_selected(self):
-        """Install for the selected browser and show the remaining steps."""
+        """Confirm, install for the selected browser, and show the steps.
+
+        Returns the install result, or ``None`` when the user cancels or the
+        install fails.
+        """
         browser = self.selected_browser()
+        if not self._confirm(browser, self):
+            return None
         try:
             result = self._install(browser)
         except (OSError, ValueError, KeyError) as error:
@@ -112,11 +108,3 @@ class BrowserIntegrationPage(QWidget):
             f"UDM prepared {browser.name}.\n\n{steps}",
         )
         return result
-
-    def values(self):
-        """Return the settings owned by this page."""
-        return {
-            "stream_quality": self.quality.currentText(),
-            "confirm_new_downloads": self.confirm.isChecked(),
-            "capture_autostart": self.autostart.isChecked(),
-        }

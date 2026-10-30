@@ -88,8 +88,8 @@ class OptionsDialogTests(QtTestCase):
         with tempfile.TemporaryDirectory() as temp:
             manager = ConfigManager(Path(temp) / "config.json")
             dialog = OptionsDialog(manager.config)
-            self.assertEqual(dialog.max_concurrent.value(), 4)
-            dialog.max_concurrent.setValue(7)
+            self.assertEqual(dialog.downloads_page.max_concurrent.value(), 4)
+            dialog.downloads_page.max_concurrent.setValue(7)
             self.assertEqual(dialog.get_updated_config()["max_concurrent"], 7)
             dialog.close()
 
@@ -98,7 +98,7 @@ class OptionsDialogTests(QtTestCase):
             manager = ConfigManager(Path(temp) / "config.json")
             dialog = OptionsDialog(manager.config)
             self.assertEqual(dialog.get_updated_config()["download_dir"], "")
-            dialog.download_dir.setText(" /Volumes/Data/Downloads ")
+            dialog.downloads_page.download_dir.setText(" /Volumes/Data/Downloads ")
             self.assertEqual(
                 dialog.get_updated_config()["download_dir"], "/Volumes/Data/Downloads"
             )
@@ -117,7 +117,8 @@ class OptionsDialogTests(QtTestCase):
         with tempfile.TemporaryDirectory() as temp:
             manager = ConfigManager(Path(temp) / "config.json")
             dialog = OptionsDialog(manager.config)
-            self.assertEqual(dialog.pages.count(), 4)
+            self.assertEqual(dialog.pages.count(), 5)
+            self.assertEqual(dialog.nav.item(1).text(), "Downloads")
             dialog.nav.setCurrentRow(2)
             self.assertEqual(dialog.pages.currentIndex(), 2)
             dialog.close()

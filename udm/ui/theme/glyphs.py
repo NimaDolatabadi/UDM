@@ -77,6 +77,9 @@ _GLYPHS = {
         'stroke-linecap="round" stroke-linejoin="round">'
         '<path d="M5 12.5 L10 17.5 L19 6.5"/></svg>'
     ),
+    # Combo-box and spin-box arrows.
+    "chevron-up": _svg('<path d="M6 15 L12 9 L18 15"/>'),
+    "chevron-down": _svg('<path d="M6 9 L12 15 L18 9"/>'),
     # Queue-tree indicators.
     "queue": _svg('<rect x="4" y="8" width="12" height="13" rx="2"/>'
                   '<path d="M8 8 V6 A2 2 0 0 1 10 4 H18 A2 2 0 0 1 20 6 '

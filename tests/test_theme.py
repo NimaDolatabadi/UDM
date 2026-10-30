@@ -88,6 +88,13 @@ class CheckmarkAssetTests(unittest.TestCase):
         sheet = build_stylesheet(theme_for("Refined Dark"), checkmark_url="/x.png")
         self.assertIn("image: url(/x.png)", sheet)
 
+    def test_themed_stylesheet_renders_arrow_glyphs(self):
+        from udm.ui.theme.assets import themed_stylesheet
+
+        sheet = themed_stylesheet(theme_for("Light"))
+        self.assertIn("chevron-up_", sheet)
+        self.assertIn("chevron-down_", sheet)
+
 
 class DevReloadTests(unittest.TestCase):
     @classmethod

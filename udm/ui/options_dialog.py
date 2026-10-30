@@ -1,4 +1,4 @@
-"""Dialog for general, network, and category settings."""
+"""Options dialog: a sidebar of settings pages and the merged result."""
 
 from copy import deepcopy
 
@@ -7,25 +7,23 @@ from PyQt6.QtWidgets import (
     QComboBox,
     QDialog,
     QDialogButtonBox,
-    QFileDialog,
     QHeaderView,
     QHBoxLayout,
-    QLineEdit,
     QListWidget,
     QPushButton,
-    QSpinBox,
     QStackedWidget,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
 )
 
-from udm.config import default_download_dir
 from udm.constants import DEFAULT_CONFIG
 from udm.i18n import TRANSLATIONS
 from udm.ui.options_browser_page import BrowserIntegrationPage
+from udm.ui.options_downloads_page import DownloadsPage
+from udm.ui.options_network_page import NetworkPage
 from udm.ui.settings_layout import SCALE as _SCALE
-from udm.ui.settings_layout import settings_form, settings_page
+from udm.ui.settings_layout import add_form_row, settings_form, settings_page
 from udm.ui.theme import DEFAULT_THEME, THEME_OPTIONS
 
 
@@ -36,7 +34,7 @@ class OptionsDialog(QDialog):
         super().__init__(parent)
         self.original_config = deepcopy(config)
         self.setWindowTitle("UDM Options")
-        self.resize(760, 540)
+        self.resize(780, 580)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -51,14 +49,22 @@ class OptionsDialog(QDialog):
         self.nav = QListWidget()
         self.nav.setObjectName("settingsNav")
         self.nav.setFixedWidth(170)
-        self.nav.addItems(["General", "Network", "Categories", "Browser"])
+        self.downloads_page = DownloadsPage(config)
+        self.network_page = NetworkPage(config)
+        self.browser_page = BrowserIntegrationPage(config)
+        # Pages that own settings contribute them through values().
+        self.setting_pages = (self.downloads_page, self.network_page)
 
         self.pages = QStackedWidget()
-        self.pages.addWidget(self._build_general_tab(config))
-        self.pages.addWidget(self._build_network_tab(config))
-        self.pages.addWidget(self._build_categories_tab(config))
-        self.browser_page = BrowserIntegrationPage(config)
-        self.pages.addWidget(self.browser_page)
+        for name, page in (
+            ("General", self._build_general_tab(config)),
+            ("Downloads", self.downloads_page),
+            ("Network", self.network_page),
+            ("Categories", self._build_categories_tab(config)),
+            ("Browser", self.browser_page),
+        ):
+            self.nav.addItem(name)
+            self.pages.addWidget(page)
         self.nav.currentRowChanged.connect(self.pages.setCurrentIndex)
         self.nav.setCurrentRow(0)
 
@@ -90,9 +96,8 @@ class OptionsDialog(QDialog):
         self.language.setMinimumWidth(180)
         self.language.addItems(TRANSLATIONS)
         self.language.setCurrentText(config.get("language", "English"))
-        form.addRow("Theme:", self.theme)
-        form.addRow("Interface Language:", self.language)
-        form.addRow("Download folder:", self._download_dir_row(config))
+        add_form_row(form, "Theme", self.theme)
+        add_form_row(form, "Language", self.language)
         outer.addLayout(form)
 
         self.start_with_os = self._check(
@@ -107,45 +112,12 @@ class OptionsDialog(QDialog):
             "Send app to tray when closing the app",
             config.get("close_to_tray", True),
         )
-        self.clipboard_monitor = self._check(
-            "Enable Clipboard Monitor",
-            config.get("clipboard_monitor", False),
-        )
-        self.sound_on_complete = self._check(
-            "Play sound/notification on download complete",
-            config.get("sound_on_complete", False),
-        )
         for checkbox in (
             self.start_with_os,
             self.start_minimized,
             self.close_to_tray,
-            self.clipboard_monitor,
-            self.sound_on_complete,
         ):
             outer.addWidget(checkbox)
-        outer.addStretch(1)
-        return page
-
-    def _build_network_tab(self, config):
-        page, outer = settings_page("Network")
-        form = settings_form()
-        self.proxy = QLineEdit(config.get("proxy", ""))
-        self.proxy.setPlaceholderText("http://user:password@proxy.server:port")
-        self.dns = QLineEdit(config.get("dns", ""))
-        self.dns.setPlaceholderText("8.8.8.8, 1.1.1.1")
-        self.segments = QSpinBox()
-        self.segments.setRange(1, 64)
-        self.segments.setValue(int(config.get("segments", 8)))
-        self.max_concurrent = QSpinBox()
-        self.max_concurrent.setRange(1, 20)
-        self.max_concurrent.setValue(
-            int(config.get("max_concurrent", DEFAULT_CONFIG["max_concurrent"]))
-        )
-        form.addRow("Custom Proxy:", self.proxy)
-        form.addRow("Custom DNS:", self.dns)
-        form.addRow("Max Segments per File:", self.segments)
-        form.addRow("Max Concurrent Downloads:", self.max_concurrent)
-        outer.addLayout(form)
         outer.addStretch(1)
         return page
 
@@ -185,25 +157,6 @@ class OptionsDialog(QDialog):
         checkbox.setChecked(checked)
         return checkbox
 
-    def _download_dir_row(self, config):
-        """Return a folder field with a Browse button; empty means Downloads."""
-        self.download_dir = QLineEdit(config.get("download_dir", ""))
-        self.download_dir.setPlaceholderText(str(default_download_dir()))
-        browse = QPushButton("Browse...")
-        browse.clicked.connect(self.choose_download_dir)
-        row = QHBoxLayout()
-        row.setSpacing(_SCALE.space_sm)
-        row.addWidget(self.download_dir, 1)
-        row.addWidget(browse)
-        return row
-
-    def choose_download_dir(self):
-        """Let the user pick the folder that holds the category folders."""
-        start = self.download_dir.text().strip() or str(default_download_dir())
-        chosen = QFileDialog.getExistingDirectory(self, "Download Folder", start)
-        if chosen:
-            self.download_dir.setText(chosen)
-
     def add_category(self, category, extensions):
         """Append an editable category and extension mapping."""
         row = self.categories.rowCount()
@@ -236,15 +189,9 @@ class OptionsDialog(QDialog):
                 "start_with_os": self.start_with_os.isChecked(),
                 "start_minimized": self.start_minimized.isChecked(),
                 "close_to_tray": self.close_to_tray.isChecked(),
-                "clipboard_monitor": self.clipboard_monitor.isChecked(),
-                "sound_on_complete": self.sound_on_complete.isChecked(),
-                "proxy": self.proxy.text().strip(),
-                "dns": self.dns.text().strip(),
-                "segments": self.segments.value(),
-                "download_dir": self.download_dir.text().strip(),
-                "max_concurrent": self.max_concurrent.value(),
                 "categories": categories,
-                **self.browser_page.values(),
             }
         )
+        for page in self.setting_pages:
+            updated.update(page.values())
         return updated

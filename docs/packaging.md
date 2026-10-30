@@ -112,7 +112,7 @@ On Windows the data directory is `%APPDATA%\UDM`; on Linux it is
 | Bridge socket | `~/Library/Application Support/UDM/bridge.sock` |
 | Installed extension | `~/Library/Application Support/UDM/extension/` |
 | Torrent resume data | `~/Library/Application Support/UDM/torrents/` |
-| Downloads | `~/Downloads/<category>/` (Options > General > Download folder) |
+| Downloads | `~/Downloads/<category>/` (Options > Downloads > Save to) |
 
 `UDM_DATA_DIR` overrides the data directory for development and tests. A
 source checkout's legacy `udm_config.json` in the working directory is copied

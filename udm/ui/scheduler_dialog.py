@@ -197,7 +197,7 @@ class SchedulerDialog(QDialog):
     def _summary(schedule):
         """Return a one-line plain-language description of a schedule."""
         if schedule.get("is_default"):
-            limit = "Global queue limit (Options > Network)"
+            limit = "Global queue limit (Options > Downloads)"
         else:
             limit = f"Up to {schedule.get('max_dl', 2)} downloads"
         return (

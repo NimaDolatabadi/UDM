@@ -55,11 +55,19 @@ class Theme:
     space_sm: int = 8
     space_md: int = 12
     space_lg: int = 16
+    space_xl: int = 24
 
     # Radius scale.
     radius_sm: int = 4
     radius_md: int = 6
     radius_lg: int = 10
+
+    # Typography: pixel sizes and weights by role.
+    font_body: int = 13
+    font_title: int = 15
+    font_heading: int = 18
+    weight_title: int = 500
+    weight_heading: int = 600
 
     # Control heights.
     control_md: int = 30
