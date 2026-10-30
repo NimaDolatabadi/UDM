@@ -46,7 +46,7 @@ def install_style_hot_reload(window):
 def _reload_styles(window, watcher, path):
     """Reload theme modules and re-apply the stylesheet and icon tint."""
     from udm.ui.theme import qss_chrome, qss_controls, stylesheet, tokens
-    from udm.ui.theme.assets import glyph_asset_url
+    from udm.ui.theme.assets import themed_stylesheet
 
     # Reload fragments before the module that composes them so the rebuilt
     # stylesheet reflects edits to any of them.
@@ -61,10 +61,7 @@ def _reload_styles(window, watcher, path):
     window.current_theme = theme
     application = QApplication.instance()
     if application is not None:
-        checkmark = glyph_asset_url("check", theme.accent_text)
-        application.setStyleSheet(
-            stylesheet.build_stylesheet(theme, checkmark_url=checkmark)
-        )
+        application.setStyleSheet(themed_stylesheet(theme))
     if getattr(window, "toolbar", None) is not None:
         window.refresh_action_icons()
     # Some editors replace the file on save, which drops the watch; re-add it.

@@ -11,12 +11,18 @@ from udm.ui.theme.qss_controls import controls_qss
 from udm.ui.theme.tokens import Theme
 
 
-def build_stylesheet(theme: Theme, checkmark_url: str = "") -> str:
+def build_stylesheet(
+    theme: Theme, checkmark_url: str = "", up_arrow_url: str = "",
+    down_arrow_url: str = "",
+) -> str:
     """Return the complete application stylesheet for ``theme``.
 
-    ``checkmark_url`` is an optional file path to a rendered checkmark image used
-    for the checked checkbox indicator; when empty the indicator still fills with
-    the accent color so the control remains usable.
+    The URLs are optional file paths to rendered glyphs: the checked checkbox
+    mark and the combo-box and spin-box arrows. When one is empty its rule is
+    omitted; controls stay usable, with an accent-filled checkbox or no arrow
+    glyph. :func:`udm.ui.theme.assets.themed_stylesheet` supplies all three.
     """
     checkmark_rule = f"image: url({checkmark_url});" if checkmark_url else ""
-    return controls_qss(theme) + chrome_qss(theme, checkmark_rule)
+    up_rule = f"image: url({up_arrow_url});" if up_arrow_url else ""
+    down_rule = f"image: url({down_arrow_url});" if down_arrow_url else ""
+    return controls_qss(theme, up_rule, down_rule) + chrome_qss(theme, checkmark_rule)

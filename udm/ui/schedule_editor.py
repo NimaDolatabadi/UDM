@@ -14,13 +14,13 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
-    QSpinBox,
     QTimeEdit,
     QVBoxLayout,
     QWidget,
 )
 
 from udm.constants import RECURRENCE_OPTIONS
+from udm.ui.settings_layout import spin_box
 from udm.ui.theme import theme_for
 
 # Spacing scale is theme-independent.
@@ -76,12 +76,10 @@ class ScheduleEditorDialog(QDialog):
         )
         form.addRow("Repeat:", self.recurrence)
 
-        self.maximum = QSpinBox()
-        self.maximum.setRange(1, 20)
-        self.maximum.setValue(schedule.get("max_dl", 2))
+        self.maximum = spin_box(1, 20, schedule.get("max_dl", 2))
         if self.is_default:
-            # The default queue's limit is the global Options > Network value.
-            note = QLabel("Speed limit set in Options > Network")
+            # The default queue's limit is the global Options > Downloads value.
+            note = QLabel("Set by Simultaneous downloads in Options > Downloads")
             note.setProperty("muted", True)
             form.addRow("Max downloads:", note)
             self.maximum.hide()

@@ -9,6 +9,7 @@ keyed by glyph and color so each theme reuses its cached asset.
 import tempfile
 from pathlib import Path
 
+from udm.ui.theme import stylesheet
 from udm.ui.theme.glyphs import render_glyph
 
 _CACHE_DIR = Path(tempfile.gettempdir()) / "udm_theme_assets"
@@ -38,3 +39,17 @@ def glyph_asset_url(name, color, size=16):
         if not pixmap.save(str(path), "PNG"):
             return ""
     return path.as_posix()
+
+
+def themed_stylesheet(theme):
+    """Return the stylesheet for ``theme`` with its glyph assets rendered.
+
+    The checkmark is drawn on the accent fill; the arrows use muted text so
+    they read as secondary to the control's value.
+    """
+    return stylesheet.build_stylesheet(
+        theme,
+        checkmark_url=glyph_asset_url("check", theme.accent_text),
+        up_arrow_url=glyph_asset_url("chevron-up", theme.text_muted),
+        down_arrow_url=glyph_asset_url("chevron-down", theme.text_muted),
+    )

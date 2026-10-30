@@ -37,6 +37,7 @@ udm/
   constants.py            defaults and fixed choices
   filenames.py            server filenames and unique destination paths
   network.py              HTTP sessions with custom DNS
+  proxy.py                proxy type and fields to and from the proxy URL
   paths.py                data, log, socket, resource paths; launch commands
   scheduling.py           schedule windows and limits
   startup.py              login-item registration
@@ -77,8 +78,12 @@ udm/
     window_grabber.py     single-page discovery
     window_bulk.py        recursive discovery
     queue_runtime.py      schedule and concurrency admission
-    options_dialog.py     settings dialog
-    options_browser_page.py  Browser settings page
+    options_dialog.py     settings dialog (General and Categories pages)
+    options_downloads_page.py  Downloads settings page
+    options_network_page.py    Network settings page (proxy, DNS)
+    options_browser_page.py    Browser settings page
+    extension_install_dialog.py  confirmation before installing the extension
+    segmented_control.py  one-of-several choice buttons
     settings_layout.py    shared settings layout helpers
     scheduler_dialog.py   schedule list
     schedule_editor.py    single schedule editor
@@ -151,10 +156,22 @@ contains:
 - `color`: queue marker color;
 - `is_default`: whether the record is protected from deletion.
 
-`udm.ui.options_dialog` owns general, network, and category settings.
-The Network tab exposes the top-level `max_concurrent` limit for the always
-eligible default queue. Explicit schedules retain their independent `max_dl`
-limits.
+`udm.ui.options_dialog` owns the General and Categories pages and merges the
+`values()` of the Downloads and Network pages into the saved configuration.
+The Downloads page exposes the top-level `max_concurrent` limit (Simultaneous
+downloads) for the always eligible default queue. Explicit schedules retain
+their independent `max_dl` limits.
+
+The Network page edits `proxy` as a type (No proxy, HTTP, or SOCKS5), server,
+port, and optional credentials. `udm.proxy` stores them as a single URL, so
+workers and yt-dlp use the value unchanged. SOCKS5 is written as `socks5h://`
+so host names resolve on the proxy; Requests reads SOCKS URLs through PySocks
+(`requests[socks]`). A stored value without a scheme is read as an HTTP proxy,
+and an `https://` or `socks5://` scheme is kept when the fields are edited.
+Until a proxy field is edited, the page saves the stored URL unchanged, so a
+type it cannot show (such as SOCKS4) or a malformed value survives other
+Options changes. The Server field also accepts `host:port` or a pasted URL.
+Torrents do not use the proxy.
 
 ### Main Window
 

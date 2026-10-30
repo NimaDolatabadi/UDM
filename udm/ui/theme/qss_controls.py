@@ -7,13 +7,19 @@ fragment by :func:`udm.ui.theme.stylesheet.build_stylesheet`.
 from udm.ui.theme.tokens import Theme
 
 
-def controls_qss(theme: Theme) -> str:
-    """Return the core-control rules for ``theme``."""
+def controls_qss(theme: Theme, up_arrow_rule: str = "", down_arrow_rule: str = "") -> str:
+    """Return the core-control rules for ``theme``.
+
+    The arrow rules are optional ``image: url(...)`` declarations for the
+    combo-box and spin-box arrow glyphs.
+    """
+    # Width of the arrow column on combo and spin boxes.
+    arrow_width = theme.space_xl
     return f"""
 QWidget {{
     background-color: {theme.bg_base};
     color: {theme.text_primary};
-    font-size: 13px;
+    font-size: {theme.font_body}px;
 }}
 QWidget:disabled {{
     color: {theme.text_disabled};
@@ -99,9 +105,50 @@ QTimeEdit,
 QDateEdit {{
     min-width: 110px;
 }}
+QComboBox,
+QSpinBox {{
+    padding-right: {arrow_width}px;
+}}
 QComboBox::drop-down {{
+    subcontrol-origin: padding;
+    subcontrol-position: center right;
     border: none;
-    width: 20px;
+    width: {arrow_width}px;
+}}
+QComboBox::down-arrow,
+QSpinBox::down-arrow {{
+    {down_arrow_rule}
+    width: {theme.space_md}px;
+    height: {theme.space_md}px;
+}}
+QSpinBox::up-arrow {{
+    {up_arrow_rule}
+    width: {theme.space_md}px;
+    height: {theme.space_md}px;
+}}
+QSpinBox::up-button,
+QSpinBox::down-button {{
+    subcontrol-origin: border;
+    width: {arrow_width}px;
+    border: none;
+    border-left: 1px solid {theme.border_subtle};
+    background: transparent;
+}}
+QSpinBox::up-button {{
+    subcontrol-position: top right;
+    border-top-right-radius: {theme.radius_sm}px;
+}}
+QSpinBox::down-button {{
+    subcontrol-position: bottom right;
+    border-bottom-right-radius: {theme.radius_sm}px;
+}}
+QSpinBox::up-button:hover,
+QSpinBox::down-button:hover {{
+    background: {theme.bg_raised};
+}}
+QSpinBox::up-button:pressed,
+QSpinBox::down-button:pressed {{
+    background: {theme.bg_base};
 }}
 QComboBox QAbstractItemView {{
     background-color: {theme.bg_raised};

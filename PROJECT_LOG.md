@@ -3,6 +3,46 @@
 This file records project changes in reverse chronological order. Every entry
 corresponds to the canonical version in `VERSION` at the time of the change.
 
+## 2026-10-30 - 0.11.0 - Minor
+
+- Added a Downloads page to Options. Save to, Video quality, Simultaneous
+  downloads, Connections per file, the save prompt, captured-download
+  autostart, the clipboard monitor, and the completion notification moved
+  there from General, Network, and Browser (`udm/ui/options_downloads_page.py`).
+  Config keys are unchanged. "Start captured downloads immediately" is now
+  disabled while "Ask where to save each new download" is on, because the
+  prompt decides instead. The notification checkbox is relabeled to say it
+  shows a notification, which is what it does.
+- Installing the browser extension now asks first. A confirmation dialog
+  (`udm/ui/extension_install_dialog.py`) lists what UDM writes and opens and
+  where, and warns when the browser is not in Applications. Nothing changes
+  until the user clicks Install.
+- Rebuilt the Network page (`udm/ui/options_network_page.py`) with a proxy
+  type selector (No proxy, HTTP, SOCKS5) and Server, Port, Username, and
+  Password fields. Added SOCKS5 proxies. `udm/proxy.py` converts the fields to
+  and from the stored `proxy` URL, so existing values keep working and the
+  workers are unchanged. SOCKS5 uses `socks5h://` so host names resolve on the
+  proxy. `requirements.txt` now installs `requests[socks]` (PySocks).
+  Review fixes: an `https://` or `socks5://` scheme is kept, the stored value is
+  saved unchanged until a proxy field is edited (so SOCKS4 or malformed values
+  are not erased), a username is always followed by `:` so an empty password
+  still authenticates, credentials keep spaces, and Server accepts
+  `host:port` or a pasted URL.
+- Fixed control styling: combo boxes show a chevron arrow, spin boxes have
+  themed stepper buttons and an inset value, and fields keep their natural
+  width instead of stretching. Settings forms use left-aligned labels in a
+  shared column and section titles. Added typography tokens (`font_body`,
+  `font_title`, `font_heading`, `weight_title`, `weight_heading`) used by the
+  body, heading, and section rules. Added the `SegmentedControl` widget, the
+  `space_xl` token (already documented), the `chevron-up` and `chevron-down`
+  glyphs, and `themed_stylesheet()`, which now applies every theme.
+- The Scheduler now points to Options > Downloads for the default queue's
+  limit. Updated the README, architecture, browser integration, packaging,
+  and design-system docs. Added tests for proxy URLs, the new pages, and the
+  install confirmation. `docs/browser-integration.md` now lists the
+  developer-style install and the macOS-only host registration as limits,
+  and links the follow-up plan in GitHub issues #10 to #16.
+
 ## 2026-10-27 - 0.10.0 - Minor
 
 - Added Safari to Options > Browser. Safari has no native-messaging hosts,

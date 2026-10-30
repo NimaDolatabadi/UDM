@@ -39,7 +39,7 @@ Opera, Arc, Chromium), Firefox, and Safari, from one shared source tree.
   list.
 - **Ask where and when**: each captured link or video opens UDM's New
   Download prompt with the save folder, Start Now, Download Later, and Cancel.
-  With Options > Browser > Ask where to save each new download turned off,
+  With Options > Downloads > Ask where to save each new download turned off,
   captured links join the download list paused, like Download Later, unless
   Start captured downloads immediately is on.
 
@@ -111,8 +111,10 @@ up to 64 KB, and header fields without line breaks.
 
 ## Installing
 
-In UDM, open Options > Browser, choose a browser, and click Install Extension.
-UDM then:
+In UDM, open Options > Browser, choose a browser, and click Install
+Extension. A confirmation dialog (`udm/ui/extension_install_dialog.py`) lists
+what will be written and opened, with the target folder; nothing changes
+until the user clicks Install. UDM then:
 
 1. builds the unpacked extension into
    `~/Library/Application Support/UDM/extension/<chromium|firefox>/`;
@@ -172,9 +174,9 @@ Without `webRequest`, the on-video button still offers the page video.
 ## Stream Downloads
 
 `StreamWorker` runs yt-dlp with the captured headers and cookies, the
-Options > Network proxy, and up to 16 concurrent fragments (the segment
-setting). The quality chosen in the browser wins; otherwise Options > Browser
-sets the default (Best, 1080p, 720p, 480p, or Audio Only). Within a resolution
+Options > Network proxy, and up to 16 concurrent fragments (the Connections
+per file setting). The quality chosen in the browser wins; otherwise Options >
+Downloads > Video quality sets the default (Best, 1080p, 720p, 480p, or Audio Only). Within a resolution
 H.264 video and AAC audio are preferred so files play in QuickTime and Finder.
 YouTube requires solving JavaScript challenges, which yt-dlp does with the
 Deno runtime (the `deno` wheel, bundled in the app) and the `yt-dlp-ejs`
@@ -195,8 +197,19 @@ next progress callback; cancelling removes `.part`, `.ytdl`, and fragment files.
 - Some signed stream URLs expire quickly; send them to UDM promptly.
 - Overlay buttons cannot appear inside a video element that is itself in
   fullscreen, because the browser renders no other content there.
+- Installing is a developer workflow: Chromium browsers need Developer mode,
+  Firefox removes the temporary add-on when it quits, and Safari needs Allow
+  unsigned extensions after every restart. Updates need a manual reinstall.
+- Native-host registration and browser detection are macOS only, so the
+  Browser page cannot connect the extension on Windows or Linux (#14).
 
 ## Future Work
+
+The plan to ship the extension like a product is tracked in GitHub issue #16:
+standalone release files (#10), automatic host registration on launch (#11),
+a "Get the extension" flow on the Browser page (#12), a protocol version
+check (#13), Windows and Linux support (#14), and pull-request builds of the
+macOS app (#15).
 
 - TODO: Publish to the Chrome Web Store, Edge Add-ons, and addons.mozilla.org,
   adding each store-assigned extension ID to the host manifest.
