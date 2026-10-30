@@ -197,8 +197,19 @@ next progress callback; cancelling removes `.part`, `.ytdl`, and fragment files.
 - Some signed stream URLs expire quickly; send them to UDM promptly.
 - Overlay buttons cannot appear inside a video element that is itself in
   fullscreen, because the browser renders no other content there.
+- Installing is a developer workflow: Chromium browsers need Developer mode,
+  Firefox removes the temporary add-on when it quits, and Safari needs Allow
+  unsigned extensions after every restart. Updates need a manual reinstall.
+- Native-host registration and browser detection are macOS only, so the
+  Browser page cannot connect the extension on Windows or Linux (#14).
 
 ## Future Work
+
+The plan to ship the extension like a product is tracked in GitHub issue #16:
+standalone release files (#10), automatic host registration on launch (#11),
+a "Get the extension" flow on the Browser page (#12), a protocol version
+check (#13), Windows and Linux support (#14), and pull-request builds of the
+macOS app (#15).
 
 - TODO: Publish to the Chrome Web Store, Edge Add-ons, and addons.mozilla.org,
   adding each store-assigned extension ID to the host manifest.
