@@ -6,6 +6,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
+from udm import paths
 from udm.bridge import extension_build, installer
 from udm.bridge.browsers import BROWSERS, CHROMIUM, FIREFOX, SAFARI, browser_by_key
 from udm.bridge.protocol import NATIVE_HOST_NAME
@@ -71,6 +72,9 @@ class InstallerTests(unittest.TestCase):
             home=self.root / "home",
             data_dir=self.root / "data",
             host_command=["/usr/bin/python3", "/opt/udm/MACDM.py"],
+            # These tests describe the macOS layout on every CI runner; other
+            # platforms are covered in test_bridge_host_registration.
+            platform=paths.DARWIN,
         )
 
     def test_chrome_install_writes_wrapper_manifest_and_extension(self):
@@ -114,7 +118,7 @@ class InstallerTests(unittest.TestCase):
             calls.append(command)
             raise OSError("no browser")
 
-        installer.open_setup_pages(browser_by_key("chrome"), result, runner)
+        installer.open_setup_pages(browser_by_key("chrome"), result, runner, paths.DARWIN)
         self.assertEqual(calls[0][:2], ["open", "-R"])
 
     def test_every_browser_has_unique_key_and_known_engine(self):
