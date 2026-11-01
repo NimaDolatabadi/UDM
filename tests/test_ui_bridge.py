@@ -1,4 +1,4 @@
-"""Offscreen tests for the bridge server, capture handling, and browser page."""
+"""Offscreen tests for the bridge server and capture handling."""
 
 from pathlib import Path
 import tempfile
@@ -8,12 +8,9 @@ import unittest
 from unittest.mock import patch
 
 from tests.qt_support import MainWindowTestCase, QtTestCase
-from udm.bridge.browsers import browser_by_key
-from udm.bridge.installer import InstallResult
-from udm.bridge.protocol import send_to_app
+from udm.bridge.protocol import MIN_PROTOCOL_VERSION, PROTOCOL_VERSION, send_to_app
 from udm.bridge.server import BridgeServer, instance_is_running
 from udm.capture import CaptureRequest
-from udm.ui.options_browser_page import BrowserIntegrationPage
 from udm.workers import DownloadWorker, StreamWorker
 
 
@@ -77,6 +74,23 @@ class CaptureHandlingTests(MainWindowTestCase):
         self.assertFalse(reply["ok"])
         self.assertEqual(self.window.downloads_tab.table.rowCount(), 0)
 
+    def test_ping_reports_protocol_and_old_extensions_are_refused(self):
+        reply = self.window.handle_bridge_message({"type": "ping"})
+        self.assertEqual(reply["protocol"], PROTOCOL_VERSION)
+        self.assertEqual(reply["minProtocol"], MIN_PROTOCOL_VERSION)
+        message = {"type": "download", "url": "https://e.com/a.zip", "protocol": 0}
+        with patch.object(self.window, "queue_download") as queue:
+            reply = self.window.handle_bridge_message(message)
+        queue.assert_not_called()
+        self.assertTrue(reply["incompatible"])
+        self.assertIn("Update the extension", reply["error"])
+
+    def test_safari_contacts_are_recorded_by_the_app(self):
+        with patch("udm.ui.window_bridge.connection_status.record") as record:
+            self.window.handle_bridge_message({"type": "ping", "engine": "safari"})
+            self.window.handle_bridge_message({"type": "ping", "engine": "chromium"})
+        record.assert_called_once()
+
     def test_download_capture_queues_file_with_browser_headers(self):
         message = {
             "type": "download", "url": "https://cdn.example/get?id=1",
@@ -133,60 +147,6 @@ class CaptureHandlingTests(MainWindowTestCase):
         self.assertEqual(worker.quality, "480p")
         self.window.on_worker_renamed(download_id, "Real Title")
         self.assertEqual(table.item(0, 0).text(), "Real Title")
-
-
-class BrowserPageTests(QtTestCase):
-    def test_install_asks_first_then_reports_steps(self):
-        calls = []
-        result = InstallResult(Path("/tmp/ext"), Path("/tmp/host"), (), ("Step one.",))
-
-        def fake_install(browser):
-            calls.append(browser.key)
-            return result
-
-        def confirm(browser, parent):
-            calls.append(f"confirm {browser.key}")
-            return True
-
-        page = BrowserIntegrationPage(
-            {},
-            install=fake_install,
-            open_pages=lambda browser, res: calls.append("opened"),
-            confirm=confirm,
-        )
-        index = page.browser.findData(browser_by_key("firefox"))
-        page.browser.setCurrentIndex(index)
-        with patch("udm.ui.options_browser_page.QMessageBox.information") as info:
-            self.assertIs(page.install_selected(), result)
-        info.assert_called_once()
-        self.assertEqual(calls, ["confirm firefox", "firefox", "opened"])
-        self.assertIn("1. Step one.", page.status.text())
-
-    def test_declining_the_confirmation_installs_nothing(self):
-        calls = []
-        page = BrowserIntegrationPage(
-            {},
-            install=lambda browser: calls.append("installed"),
-            open_pages=lambda browser, res: calls.append("opened"),
-            confirm=lambda browser, parent: False,
-        )
-        with patch("udm.ui.options_browser_page.QMessageBox.information") as info:
-            self.assertIsNone(page.install_selected())
-        info.assert_not_called()
-        self.assertEqual(calls, [])
-
-    def test_install_failure_is_shown_without_dialog(self):
-        def failing_install(browser):
-            raise OSError("read-only")
-
-        page = BrowserIntegrationPage(
-            {}, install=failing_install, open_pages=None,
-            confirm=lambda browser, parent: True,
-        )
-        with patch("udm.ui.options_browser_page.QMessageBox.information") as info:
-            self.assertIsNone(page.install_selected())
-        info.assert_not_called()
-        self.assertIn("read-only", page.status.text())
 
 
 if __name__ == "__main__":

@@ -5,7 +5,10 @@ import logging
 from PyQt6.QtWidgets import QSystemTrayIcon
 
 from udm import __version__, paths
+from udm.bridge import connection_status
+from udm.bridge.browsers import SAFARI
 from udm.bridge.native_host import probe_formats
+from udm.bridge.protocol import compatibility_error, protocol_info
 from udm.bridge.server import BridgeServer
 from udm.capture import CaptureRequest
 
@@ -43,13 +46,22 @@ class BridgeController:
     def handle_bridge_message(self, message):
         """Apply one bridge message and return the reply sent to the browser."""
         kind = message.get("type")
+        # Other browsers' contacts are recorded by the native host; Safari's
+        # handler has no Python process, so the app records them.
+        if message.get("engine") == SAFARI:
+            connection_status.record(message)
         if kind == "ping":
-            return {"ok": True, "running": True, "version": __version__}
+            return {
+                "ok": True, "running": True, "version": __version__, **protocol_info()
+            }
         if kind == "show":
             self.reveal_window()
             return {"ok": True}
         if kind not in _CAPTURE_TYPES:
             return {"ok": False, "error": f"Unsupported message type: {kind!r}"}
+        problem = compatibility_error(message)
+        if problem:
+            return {"ok": False, "incompatible": True, "error": problem}
         try:
             request = CaptureRequest.from_message(message)
         except ValueError as error:

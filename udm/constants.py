@@ -3,6 +3,8 @@
 SCHEDULE_COLORS = ["#ff4d4d", "#ffad33", "#2eb82e", "#3399ff", "#b366ff"]
 RECURRENCE_OPTIONS = ["Every Day", "Even Days", "Odd Days"]
 STREAM_QUALITY_OPTIONS = ["Best", "1080p", "720p", "480p", "Audio Only"]
+# Releases carry the standalone extension files (udm.bridge.extension_package).
+RELEASES_URL = "https://github.com/NimaDolatabadi/UDM/releases/latest"
 
 DEFAULT_CONFIG = {
     "language": "English",

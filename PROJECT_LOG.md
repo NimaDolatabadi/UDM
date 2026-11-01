@@ -3,6 +3,53 @@
 This file records project changes in reverse chronological order. Every entry
 corresponds to the canonical version in `VERSION` at the time of the change.
 
+## 2026-11-01 - 0.12.0 - Minor
+
+Ships the browser extension more like a product (issue #16, technical items
+#10 to #15). Store publishing and signing still need the owner's accounts.
+
+- Standalone extension release files (#10): `python -m
+  udm.bridge.extension_package` writes `udm-capture-chromium-<version>.zip`
+  and `udm-capture-firefox-<version>.xpi` with the same builder the app uses,
+  as reproducible archives. `release.yml` attaches them to each release, and
+  the new `extension.yml` uploads them on pull requests that change the
+  extension.
+- Automatic host registration (#11): `udm/bridge/host_registration.py`
+  writes or repairs the native-messaging wrapper and manifests at every
+  launch for each detected browser, leaves matching files alone, and only
+  repairs existing manifests for browsers it no longer detects. Manifests
+  allow the development IDs plus store IDs once they exist.
+- "Get the extension" Browser page (#12): Options > Browser now shows the last
+  extension contact (`udm/bridge/connection_status.py`, recorded by the
+  native host and, for Safari, the app) with Check Again, and a Get UDM
+  Capture... button that opens the store listing or, for now, the releases
+  page. The build-and-load flow moved to Developers > Install from Source...
+  Safari keeps its install, labeled Install for Safari...
+- Protocol versioning (#13): `PROTOCOL_VERSION` and `MIN_PROTOCOL_VERSION`
+  (both 1) in `udm/bridge/protocol.py` and `extension/src/common.js`. The
+  extension sends its protocol, version, and engine with every message; ping
+  replies, including the native host's and the Safari handler's when UDM is
+  closed, carry UDM's. The popup shows "Update needed" with "Update UDM" or
+  "Update the extension", and UDM refuses captures from too-old extensions
+  with a message naming the side to update. The extension pings at browser
+  start.
+- Windows and Linux browser integration (#14): browsers list host locations
+  per platform (`udm/bridge/browsers.py`); detection and open commands are
+  platform aware (`udm/bridge/browser_detect.py`). Linux writes the XDG and
+  `~/.mozilla` folders; Windows writes per-engine manifests, a `.bat`
+  wrapper, and `HKCU` registry keys (`udm/bridge/windows_hosts.py`). The
+  Windows bridge uses a named pipe, which the native host opens as a file
+  with a timeout, and the host starts UDM detached from the browser's job.
+  These paths are unit tested but not yet verified on real Windows or Linux
+  machines. The install dialog names the platform's file manager.
+- Pull-request macOS builds (#15): `MACDM.py --self-check` (`udm/self_check.py`)
+  imports every module and checks bundled resources without opening a window.
+  The new `macos-build.yml` builds the DMG on pull requests that touch
+  packaging, requirements, the extension, or the bridge, runs the bundled
+  self-check, and uploads the DMG.
+- Added a `QLabel[tone="success"]` style for confirmed states. Tests for the
+  Browser page moved to `tests/test_ui_browser_page.py`.
+
 ## 2026-10-30 - 0.11.0 - Minor
 
 - Added a Downloads page to Options. Save to, Video quality, Simultaneous

@@ -25,13 +25,13 @@ The `udm` package separates domain data, services, workers, and user interface
 components:
 
 ```text
-MACDM.py                  entry point; dispatches --native-messaging-host
+MACDM.py                  entry point; dispatches --native-messaging-host and --self-check
 extension/                browser extension source (see browser-integration.md)
 packaging/                shared PyInstaller spec; macos/, windows/, linux/ build scripts
-.github/workflows/        CI tests and release packaging
+.github/workflows/        CI tests, PR macOS and extension builds, release packaging
 udm/
   __init__.py             package version
-  app.py                  Qt application, single instance, bridge start
+  app.py                  Qt application, single instance, bridge start, host registration
   capture.py              validated browser capture requests
   config.py               settings persistence and category routing
   constants.py            defaults and fixed choices
@@ -40,14 +40,20 @@ udm/
   proxy.py                proxy type and fields to and from the proxy URL
   paths.py                data, log, socket, resource paths; launch commands
   scheduling.py           schedule windows and limits
+  self_check.py           headless import and resource check for packaged builds
   startup.py              login-item registration
   bridge/
     protocol.py           native-messaging framing and socket JSON lines
     native_host.py        browser-launched relay to the app
     server.py             Qt local-socket server
-    browsers.py           supported browsers and host directories
+    browsers.py           supported browsers and host locations per platform
+    browser_detect.py     installed-browser detection and open commands
+    host_registration.py  host wrapper and manifests, repaired at launch
+    windows_hosts.py      Windows registry entries for host manifests
+    connection_status.py  last extension contact per engine
     extension_build.py    per-engine extension assembly
-    installer.py          per-browser installation
+    extension_package.py  standalone .zip and .xpi release files
+    installer.py          developer install from source
     safari.py             Safari extension app assembly and signing
   i18n/                   translation catalogs
   torrent/
@@ -81,7 +87,7 @@ udm/
     options_dialog.py     settings dialog (General and Categories pages)
     options_downloads_page.py  Downloads settings page
     options_network_page.py    Network settings page (proxy, DNS)
-    options_browser_page.py    Browser settings page
+    options_browser_page.py    Browser page: get the extension, connection status
     extension_install_dialog.py  confirmation before installing the extension
     segmented_control.py  one-of-several choice buttons
     settings_layout.py    shared settings layout helpers
@@ -201,9 +207,10 @@ The concrete main window composes focused mixins:
 ### Browser Bridge
 
 `udm.bridge` connects the browser extension to the app. The browser starts the
-native host, which relays each request over a local socket to the
-`BridgeServer` owned by the running window, launching UDM when needed. The same
-socket enforces a single running instance. See `docs/browser-integration.md`.
+native host, which relays each request over a local socket (a named pipe on
+Windows) to the `BridgeServer` owned by the running window, launching UDM when
+needed. The same socket enforces a single running instance. At each launch the
+app registers the native host with every installed browser. See `docs/browser-integration.md`.
 
 ### Torrents
 
@@ -238,8 +245,11 @@ lower-level modules reusable and prevents circular imports.
   application shutdown.
 - Launch the compatibility entry point in an offscreen smoke test and confirm it
   remains alive until intentionally closed.
-- Test bridge framing, the native host, the socket server, installer output,
-  extension assembly, capture validation, and the stream worker with a fake
-  yt-dlp downloader.
+- Test bridge framing, the Windows pipe client, protocol compatibility, the
+  native host, the socket server, host registration for each platform,
+  browser detection, installer output, extension assembly and release files,
+  capture validation, and the stream worker with a fake yt-dlp downloader.
+- Pull requests that touch packaging build the macOS app and run its
+  `--self-check` (see `docs/packaging.md`).
 - Before a release, build the packages (see `docs/packaging.md`) and exercise the bundled native host and
   single-instance handoff (see `docs/packaging.md`).

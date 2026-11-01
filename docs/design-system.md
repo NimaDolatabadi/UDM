@@ -213,7 +213,9 @@ height rhythm so the interface reads as one system.
   edits stretch to the page width; combo boxes and spin boxes keep their
   natural width.
 - Helper and consequence text uses muted labels directly below the control
-  it explains. Warnings use `QLabel[tone="warning"]` in `status.warning`.
+  it explains. Warnings use `QLabel[tone="warning"]` in `status.warning`, and
+  confirmed good states, such as a connected extension, use
+  `QLabel[tone="success"]` in `status.success`.
 
 ### Tables, Trees, and Lists
 
@@ -383,15 +385,21 @@ Modal layouts:
   Detailed field editing opens in a separate `ScheduleEditorDialog`. Column 0
   stretches and the summary wraps, so the table never scrolls sideways.
 
-- The Options dialog's Browser page (`udm/ui/options_browser_page.py`) holds a
-  browser selector with a secondary Install Extension... button beside it, and
-  a muted, word-wrapped status label that lists the remaining steps. Shared
-  page and form helpers live in `udm/ui/settings_layout.py`.
-- Install Extension... first opens the Install Browser Extension dialog
+- The Options dialog's Browser page (`udm/ui/options_browser_page.py`) is a
+  form with a Browser selector; a Status row whose word-wrapped label fills
+  the row (`tone="success"` after a recorded contact, muted otherwise) beside
+  a secondary Check Again button; and an Extension row with a secondary Get
+  UDM Capture... button (Install for Safari... for Safari) followed by muted
+  helper text. A "Developers" section label introduces muted text and a
+  secondary Install from Source... button, hidden for Safari. A muted status
+  label below lists the remaining steps after an install. Shared page and
+  form helpers live in `udm/ui/settings_layout.py`.
+- Install from Source... (and Install for Safari...) first opens the Install
+  Browser Extension dialog
   (`udm/ui/extension_install_dialog.py`): a heading naming the browser, a
   "UDM will:" list of bulleted actions with hanging indents, the target
-  folder in muted text, a `tone="warning"` line when the browser is not in
-  Applications, and a muted note on the manual steps that remain. Footer:
+  folder in muted text, a `tone="warning"` line when the browser was not
+  found on this computer, and a muted note on the manual steps that remain. Footer:
   secondary Cancel, then the primary Install, which has focus.
 
 Browser extension surfaces:

@@ -12,7 +12,13 @@ async function activeTab() {
 async function refreshStatus() {
   const status = $("status");
   const reply = await sendToUdm({ type: "ping" });
-  if (reply.hostMissing) {
+  const problem = compatibilityProblem(reply);
+  if (problem) {
+    status.textContent = "Update needed";
+    status.className = "status warning";
+    status.title = problem;
+    showMessage(problem, "danger");
+  } else if (reply.hostMissing) {
     status.textContent = "Not installed";
     status.className = "status danger";
     status.title = reply.detail ?? "";

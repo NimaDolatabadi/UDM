@@ -20,14 +20,37 @@ them as a GitHub release:
 1. Bump `VERSION` and add the `PROJECT_LOG.md` entry, then push to `main`.
 2. Tag the commit and push the tag:
    `git tag v<version> && git push origin v<version>`.
-3. The workflow checks that the tag matches `VERSION`, builds all packages,
+3. The workflow checks that the tag matches `VERSION`, builds all packages
+   and the standalone browser extension files
+   (`udm-capture-chromium-<version>.zip` and
+   `udm-capture-firefox-<version>.xpi`, see `docs/browser-integration.md`),
    and creates the release with the log entry as release notes and a
    `SHA256SUMS.txt` file.
 
 Running the workflow by hand (Actions > Release > Run workflow) builds the
 packages as downloadable workflow artifacts without publishing a release.
 `.github/workflows/ci.yml` runs the unit tests on Ubuntu and macOS for every
-push to `main` and every pull request.
+push to `main` and every pull request. Two more workflows run only on pull
+requests that touch the files they build:
+
+| Workflow | Runs when a PR changes | Does | Artifact |
+| -------- | ---------------------- | ---- | -------- |
+| `macos-build.yml` | `packaging/`, `requirements.txt`, `extension/`, `udm/bridge/`, `MACDM.py` | Builds the DMG and runs `UDM.app/Contents/MacOS/UDM --self-check` | `udm-macos-pr-build` (the DMG) |
+| `extension.yml` | `extension/`, the extension build and package modules, `VERSION` | Builds the extension files | `udm-capture-extension` |
+
+### Self-Check
+
+`UDM --self-check` (handled in `MACDM.py` before Qt starts, implemented in
+`udm/self_check.py`) imports every `udm` module, confirms `VERSION`,
+`logo.png`, and the extension source are bundled, builds the extension for
+each engine into a temporary folder, and, in a frozen macOS build, confirms the
+precompiled Safari binaries are present. It prints failures to standard error
+and exits with 1, or prints "self-check passed" and exits with 0. Run it on
+any build:
+
+```bash
+dist/UDM.app/Contents/MacOS/UDM --self-check   # or build/macos/dist/... after build_dmg.sh
+```
 
 ## macOS
 
@@ -103,7 +126,8 @@ sudo pacman -U ./udm-<version>-1-x86_64.pkg.tar.xz  # Arch Linux
 ## Runtime Locations
 
 On Windows the data directory is `%APPDATA%\UDM`; on Linux it is
-`$XDG_DATA_HOME/UDM` (default `~/.local/share/UDM`). The macOS locations are:
+`$XDG_DATA_HOME/UDM` (default `~/.local/share/UDM`). On Windows the bridge is
+the named pipe `\\.\pipe\udm-<hash>` instead of a socket file. The macOS locations are:
 
 | Purpose | Path |
 | ------- | ---- |
@@ -111,6 +135,8 @@ On Windows the data directory is `%APPDATA%\UDM`; on Linux it is
 | Logs | `~/Library/Application Support/UDM/logs/` |
 | Bridge socket | `~/Library/Application Support/UDM/bridge.sock` |
 | Installed extension | `~/Library/Application Support/UDM/extension/` |
+| Native host wrapper and Windows manifests | `~/Library/Application Support/UDM/native-host/` |
+| Last extension contact | `~/Library/Application Support/UDM/extension-status.json` |
 | Torrent resume data | `~/Library/Application Support/UDM/torrents/` |
 | Downloads | `~/Downloads/<category>/` (Options > Downloads > Save to) |
 
@@ -127,8 +153,6 @@ there on first launch.
 - TODO: Build a universal (arm64 and x86_64) bundle; the current FFmpeg wheel
   matches only the build machine's architecture, so releases ship one DMG per
   architecture.
-- TODO: Port the browser bridge to Windows and Linux: native-host manifests
-  in the registry and in the Linux browser directories, and a named-pipe
-  client on Windows, where Python has no Unix sockets. The extension installer
-  and magnet or `.torrent` file associations are macOS-only today.
+- TODO: Register magnet links and `.torrent` files on Windows and Linux;
+  the file associations are macOS-only today.
 - TODO: Sign the Windows executables and installer.

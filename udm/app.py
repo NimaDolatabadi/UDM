@@ -7,6 +7,7 @@ import sys
 from PyQt6.QtWidgets import QApplication
 
 from udm import paths
+from udm.bridge import host_registration
 from udm.bridge.protocol import BridgeError, send_to_app
 from udm.bridge.server import instance_is_running
 from udm.tls import use_system_trust
@@ -46,7 +47,24 @@ def main():
     # The bridge starts only for the real app so tests never bind the socket.
     if not window.start_bridge(socket_path):
         logging.error("Browser bridge unavailable; extension capture disabled")
+    register_native_hosts()
     # Magnet links and .torrent files opened from other apps arrive as events.
     application.installEventFilter(OpenEventFilter(window))
     window.show()
     return application.exec()
+
+
+def register_native_hosts(sync=None):
+    """Write or repair the browsers' host manifests; never stop the launch.
+
+    Running at every launch keeps the manifests pointing at this copy of UDM
+    after it moves or updates, whichever way the extension was installed.
+    """
+    try:
+        changed = (sync or host_registration.sync_all)()
+    except Exception:  # A registration defect must not keep UDM from opening.
+        logging.exception("Native host registration failed")
+        return []
+    for item in changed:
+        logging.info("Registered native host: %s", item)
+    return changed

@@ -1,0 +1,38 @@
+# Build UDM.app on pull requests that can break packaging.
+#
+# The bundled app runs its headless self-check (MACDM.py --self-check), which
+# imports every module and verifies the bundled resources, so a missing
+# hidden import or data file fails the pull request instead of the release.
+# The DMG is uploaded so reviewers can try the build.
+name: macOS Build
+
+on:
+  pull_request:
+    paths:
+      - "packaging/**"
+      - "requirements.txt"
+      - "extension/**"
+      - "udm/bridge/**"
+      - "MACDM.py"
+      - ".github/workflows/macos-build.yml"
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install build dependencies
+        run: pip install -r packaging/requirements-build.txt
+      - name: Build macOS disk image
+        run: packaging/macos/build_dmg.sh
+      - name: Run the bundled self-check
+        run: build/macos/dist/UDM.app/Contents/MacOS/UDM --self-check
+      - uses: actions/upload-artifact@v4
+        with:
+          name: udm-macos-pr-build
+          path: dist/*.dmg
+          if-no-files-found: error

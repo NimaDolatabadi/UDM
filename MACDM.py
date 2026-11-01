@@ -2,12 +2,14 @@
 
 ``--native-messaging-host`` runs the browser bridge host instead of the GUI.
 It is dispatched before any Qt import so the host starts quickly and writes
-nothing but protocol frames to stdout.
+nothing but protocol frames to stdout. ``--self-check`` verifies a packaged
+build without opening a window (``udm.self_check``).
 """
 
 import sys
 
 HOST_FLAG = "--native-messaging-host"
+SELF_CHECK_FLAG = "--self-check"
 __all__ = ["MainWindow", "UDMManager", "main"]
 
 
@@ -29,6 +31,10 @@ def _run():
         from udm.bridge.native_host import main as host_main
 
         return host_main()
+    if SELF_CHECK_FLAG in sys.argv:
+        from udm.self_check import run
+
+        return run()
     from udm.app import main
 
     return main()

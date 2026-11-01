@@ -123,7 +123,7 @@ class InstallerTests(unittest.TestCase):
         for browser in BROWSERS:
             self.assertIn(browser.engine, (CHROMIUM, FIREFOX, SAFARI))
             # Only Safari reaches UDM without a host manifest.
-            self.assertEqual(bool(browser.host_dirs), browser.engine != SAFARI)
+            self.assertEqual(bool(browser.mac_hosts), browser.engine != SAFARI)
 
 
 if __name__ == "__main__":

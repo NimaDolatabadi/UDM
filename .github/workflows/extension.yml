@@ -1,0 +1,33 @@
+# Build the standalone browser extension files on pull requests that change it.
+#
+# The files are uploaded as workflow artifacts so reviewers can load them;
+# release.yml attaches the same files to each release.
+name: Extension
+
+on:
+  pull_request:
+    paths:
+      - "extension/**"
+      - "udm/bridge/extension_build.py"
+      - "udm/bridge/extension_package.py"
+      - "VERSION"
+      - ".github/workflows/extension.yml"
+
+jobs:
+  package:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # The packager uses only the standard library, so no install is needed.
+      - name: Build the extension files
+        run: python -m udm.bridge.extension_package dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: udm-capture-extension
+          path: |
+            dist/*.zip
+            dist/*.xpi
+          if-no-files-found: error
