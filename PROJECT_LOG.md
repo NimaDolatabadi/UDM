@@ -3,6 +3,15 @@
 This file records project changes in reverse chronological order. Every entry
 corresponds to the canonical version in `VERSION` at the time of the change.
 
+## 2026-11-01 - 0.12.1 - Patch
+
+- Fixed the Ubuntu CI failures from 0.12.0. Five older tests assumed macOS
+  paths and commands; they passed before only because the installer wrote
+  macOS paths on every platform. The installer tests and the install-dialog
+  wording test now pin the platform they describe, and the Safari Browser page
+  test is skipped through `paths.platform_key()`. The full suite also passes
+  with the platform forced to Linux.
+
 ## 2026-11-01 - 0.12.0 - Minor
 
 Ships the browser extension more like a product (issue #16, technical items

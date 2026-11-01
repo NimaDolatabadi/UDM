@@ -2,8 +2,10 @@
 
 from pathlib import Path
 import unittest
+from unittest.mock import patch
 
 from tests.qt_support import QtTestCase
+from udm import paths
 from udm.bridge.browsers import browser_by_key
 from udm.proxy import PROXY_NONE, PROXY_SOCKS5
 from udm.ui.extension_install_dialog import (
@@ -89,7 +91,10 @@ class DownloadsPageTests(QtTestCase):
 
 class InstallDialogTests(QtTestCase):
     def test_actions_describe_each_engine(self):
-        self.assertIn("Finder", install_actions(browser_by_key("chrome"))[-1])
+        with patch("udm.paths.platform_key", return_value=paths.DARWIN):
+            self.assertIn("Finder", install_actions(browser_by_key("chrome"))[-1])
+        with patch("udm.paths.platform_key", return_value=paths.WINDOWS):
+            self.assertIn("File Explorer", install_actions(browser_by_key("chrome"))[-1])
         self.assertIn("add-ons", install_actions(browser_by_key("firefox"))[-1])
         self.assertIn("Safari", install_actions(browser_by_key("safari"))[-1])
 

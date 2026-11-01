@@ -2,11 +2,11 @@
 
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-import sys
 import unittest
 from unittest.mock import patch
 
 from tests.qt_support import QtTestCase
+from udm import paths
 from udm.bridge.browsers import browser_by_key
 from udm.bridge.installer import InstallResult
 from udm.constants import RELEASES_URL
@@ -113,7 +113,7 @@ class GetExtensionTests(QtTestCase):
         self.assertIn("not in browser stores yet", page.get_note.text())
         self.assertFalse(page.install_row.isHidden())
 
-    @unittest.skipUnless(sys.platform == "darwin", "Safari exists only on macOS")
+    @unittest.skipUnless(paths.platform_key() == paths.DARWIN, "Safari exists only on macOS")
     def test_safari_get_runs_the_confirmed_install(self):
         calls = []
         page = self._page(
