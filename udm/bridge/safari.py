@@ -21,6 +21,7 @@ import subprocess
 from udm import paths
 from udm.bridge import extension_build
 from udm.bridge.browsers import SAFARI
+from udm.bridge.protocol import MIN_PROTOCOL_VERSION, PROTOCOL_VERSION
 
 APP_NAME = "UDM Capture.app"
 APP_ID = "com.udm.manager.safari"
@@ -119,6 +120,8 @@ def extension_info(version, socket_path, app_bundle=None):
         },
         "UDMBridgeSocket": str(socket_path),
         "UDMAppPath": str(app_bundle or ""),
+        "UDMProtocol": PROTOCOL_VERSION,
+        "UDMMinProtocol": MIN_PROTOCOL_VERSION,
     }
 
 

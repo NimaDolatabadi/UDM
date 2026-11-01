@@ -2,6 +2,7 @@
 
 Installing writes files, registers a helper with the browser, and opens apps,
 so the user sees exactly what will happen and agrees before anything changes.
+This is the developer install; see ``udm.ui.options_browser_page``.
 """
 
 from pathlib import Path
@@ -12,6 +13,14 @@ from PyQt6.QtWidgets import QDialog, QHBoxLayout, QLabel, QPushButton, QVBoxLayo
 from udm import paths
 from udm.bridge.browsers import FIREFOX, SAFARI
 from udm.ui.settings_layout import SCALE, muted_label
+
+
+def file_manager_name(platform=None):
+    """Return what the platform calls its file manager."""
+    platform = platform or paths.platform_key()
+    return {paths.DARWIN: "Finder", paths.WINDOWS: "File Explorer"}.get(
+        platform, "the file manager"
+    )
 
 
 def install_target(browser, data_dir=None):
@@ -37,7 +46,7 @@ def install_actions(browser):
     return (
         "Save the extension files.",
         f"Register a small helper so {browser.name} can hand downloads to UDM.",
-        f"Show the extension folder in Finder and {opened}.",
+        f"Show the extension folder in {file_manager_name()} and {opened}.",
     )
 
 
@@ -94,7 +103,7 @@ class ExtensionInstallDialog(QDialog):
         ))
         if not browser.is_installed():
             self.missing = QLabel(
-                f"{browser.name} wasn't found in Applications. UDM prepares "
+                f"{browser.name} wasn't found on this computer. UDM prepares "
                 "the files, but can't open the browser for you."
             )
             self.missing.setProperty("tone", "warning")

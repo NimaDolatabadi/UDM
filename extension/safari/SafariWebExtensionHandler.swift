@@ -38,10 +38,17 @@ struct Bridge {
 
     let socketPath: String
     let appPath: String
+    /// UDM's version and protocol fields, reported while UDM is closed.
+    let appInfo: [String: Any]
 
     init(bundle: Bundle) {
         socketPath = bundle.object(forInfoDictionaryKey: "UDMBridgeSocket") as? String ?? ""
         appPath = bundle.object(forInfoDictionaryKey: "UDMAppPath") as? String ?? ""
+        appInfo = [
+            "version": bundle.object(forInfoDictionaryKey: "CFBundleShortVersionString") ?? "",
+            "protocol": bundle.object(forInfoDictionaryKey: "UDMProtocol") ?? 1,
+            "minProtocol": bundle.object(forInfoDictionaryKey: "UDMMinProtocol") ?? 1,
+        ]
     }
 
     /// Return the reply for one extension message, mirroring native_host.handle.
@@ -49,7 +56,7 @@ struct Bridge {
         let kind = message["type"] as? String
         if kind == "ping" {
             guard let reply = try? send(message, timeout: 2) else {
-                return ["ok": true, "host": true, "running": false]
+                return appInfo.merging(["ok": true, "host": true, "running": false]) { _, new in new }
             }
             return reply.merging(["host": true]) { _, host in host }
         }

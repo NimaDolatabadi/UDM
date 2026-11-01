@@ -9,7 +9,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PyQt6.QtCore import QTimer
 
-from udm.app import create_application
+from udm.app import create_application, register_native_hosts
 from udm.config import ConfigManager
 
 
@@ -30,6 +30,18 @@ class ApplicationSmokeTests(unittest.TestCase):
             exit_code = application.exec()
             self.assertEqual(exit_code, 0)
             self.assertFalse(window.isVisible())
+
+
+class HostRegistrationTests(unittest.TestCase):
+    def test_launch_registration_reports_changes(self):
+        self.assertEqual(register_native_hosts(lambda: ["/a.json"]), ["/a.json"])
+
+    def test_registration_failure_never_stops_the_launch(self):
+        def failing():
+            raise RuntimeError("defect")
+
+        with self.assertLogs(level="ERROR"):
+            self.assertEqual(register_native_hosts(failing), [])
 
 
 if __name__ == "__main__":

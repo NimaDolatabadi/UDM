@@ -133,17 +133,23 @@ python MACDM.py
 
 ### 4. Install the Browser Extension
 
-Open Options > Browser, choose your browser, and click Install Extension. UDM
-explains what it will write and which apps it will open, and installs only
-after you click Install. Then follow the steps shown:
+UDM connects itself to every installed browser each time it starts, on macOS,
+Windows, and Linux. Open Options > Browser and choose your browser: the Status
+row shows whether UDM Capture has connected, and Get UDM Capture... opens the
+release page with the extension files (`udm-capture-chromium-<version>.zip`
+and `udm-capture-firefox-<version>.xpi`). The extension is not in the browser
+stores yet, so for now load it as a developer extension. Developers > Install
+from Source... builds it from your copy of UDM; UDM explains what it will
+write and which apps it will open, and installs only after you click Install.
+Then follow the steps shown:
 
 - **Chrome, Edge, Brave, Vivaldi, Opera, Arc, Chromium**: on the extensions
   page enable Developer mode, click Load unpacked, and choose the folder UDM
-  revealed in Finder.
+  revealed in the file manager.
 - **Firefox**: open `about:debugging#/runtime/this-firefox`, click Load
   Temporary Add-on, and choose `manifest.json` in that folder. Firefox removes
   temporary add-ons when it quits.
-- **Safari**: UDM writes `UDM Capture.app` and opens Safari's settings. Turn
+- **Safari** (Install for Safari...): UDM writes `UDM Capture.app` and opens Safari's settings. Turn
   on Settings > Advanced > Show features for web developers, then Developer >
   Allow unsigned extensions (Safari turns this off when it quits), and enable
   UDM Capture in the Extensions tab. On Safari, clicked file links are sent to

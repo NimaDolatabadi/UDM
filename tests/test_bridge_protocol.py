@@ -8,9 +8,11 @@ import tempfile
 import threading
 import unittest
 
+from udm import __version__
 from udm.bridge import native_host
 from udm.bridge.protocol import (
     MAX_MESSAGE_BYTES,
+    PROTOCOL_VERSION,
     BridgeError,
     decode_line,
     encode_line,
@@ -102,10 +104,14 @@ class NativeHostTests(unittest.TestCase):
             )
         stdout.seek(0)
         self.assertEqual(code, 0)
+        reply = read_native_message(stdout)
         self.assertEqual(
-            read_native_message(stdout),
+            {key: reply[key] for key in ("ok", "host", "running")},
             {"ok": True, "host": True, "running": False},
         )
+        # The host speaks for the installed UDM, so the extension can check it.
+        self.assertEqual(reply["protocol"], PROTOCOL_VERSION)
+        self.assertEqual(reply["version"], __version__)
         self.assertEqual(launches, [])
 
     def test_download_launches_app_then_forwards_message(self):

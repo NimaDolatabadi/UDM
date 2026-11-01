@@ -1,4 +1,4 @@
-"""Per-browser installation of the extension files and native host.
+"""Developer installation of the extension from this copy of UDM.
 
 Browsers do not let applications add extensions silently, so installation
 prepares everything the browser needs and then guides the user through the
@@ -7,17 +7,11 @@ extension on in Safari's settings.
 """
 
 from dataclasses import dataclass
-import json
 from pathlib import Path
-import shlex
-import subprocess
 
 from udm import __version__, paths
-from udm.bridge import extension_build, safari
+from udm.bridge import browser_detect, extension_build, host_registration, safari
 from udm.bridge.browsers import FIREFOX, SAFARI
-from udm.bridge.protocol import NATIVE_HOST_NAME
-
-HOST_FLAG = "--native-messaging-host"
 
 
 @dataclass(frozen=True)
@@ -34,9 +28,14 @@ class InstallResult:
     steps: tuple
 
 
-def install(browser, home=None, data_dir=None, host_command=None, source=None):
-    """Prepare ``browser`` to use the extension and return what was written."""
-    home = Path(home or Path.home())
+def install(browser, home=None, data_dir=None, host_command=None, source=None,
+            platform=None, winreg_module=None):
+    """Build the extension from source for ``browser`` and register its host.
+
+    This is the developer install; end users get the extension from a store
+    or a release file, and UDM registers the host on launch
+    (:func:`udm.bridge.host_registration.sync_all`).
+    """
     data_dir = Path(data_dir or paths.data_dir())
     if browser.engine == SAFARI:
         app = safari.install(
@@ -49,55 +48,15 @@ def install(browser, home=None, data_dir=None, host_command=None, source=None):
         __version__,
         source,
     )
-    wrapper = write_host_wrapper(
-        data_dir / "native-host" / "udm-native-host",
-        host_command or paths.app_command(),
+    registration = host_registration.register(
+        browser, home, data_dir, host_command, platform, source, winreg_module
     )
-    manifest = host_manifest(browser.engine, wrapper, source)
-    support = home / "Library" / "Application Support"
-    written = []
-    for relative in browser.host_dirs:
-        target = support / relative / f"{NATIVE_HOST_NAME}.json"
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
-        written.append(target)
     return InstallResult(
-        extension_dir, wrapper, tuple(written), setup_steps(browser, extension_dir)
+        extension_dir,
+        registration.wrapper,
+        registration.manifests,
+        setup_steps(browser, extension_dir),
     )
-
-
-def write_host_wrapper(path, command):
-    """Write an executable script that starts the native host.
-
-    Host manifests accept only an executable path without arguments, so the
-    wrapper supplies the interpreter, entry script, and host flag.
-    """
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    quoted = " ".join(shlex.quote(str(part)) for part in command)
-    path.write_text(
-        f'#!/bin/sh\nexec {quoted} {HOST_FLAG} "$@"\n', encoding="utf-8"
-    )
-    path.chmod(0o755)
-    return path
-
-
-def host_manifest(engine, wrapper, source=None):
-    """Return the native-host manifest that authorizes the UDM extension."""
-    manifest = {
-        "name": NATIVE_HOST_NAME,
-        "description": "UDM browser capture bridge",
-        "path": str(wrapper),
-        "type": "stdio",
-    }
-    if engine == FIREFOX:
-        manifest["allowed_extensions"] = [
-            extension_build.firefox_extension_id(source)
-        ]
-    else:
-        extension_id = extension_build.chromium_extension_id(source)
-        manifest["allowed_origins"] = [f"chrome-extension://{extension_id}/"]
-    return manifest
 
 
 def setup_steps(browser, extension_dir):
@@ -130,23 +89,22 @@ def setup_steps(browser, extension_dir):
     )
 
 
-def open_setup_pages(browser, result, runner=subprocess.run):
+def open_setup_pages(browser, result, runner=None, platform=None):
     """Reveal the extension folder and open the browser's extensions page.
 
     For Safari, opening ``UDM Capture.app`` registers the extension and shows
-    it in Safari's settings. Failures are ignored: some browsers refuse
-    internal URLs from the command line, and the written steps still explain
-    where to go.
+    it in Safari's settings. Failures are ignored, because the written steps
+    still explain where to go.
     """
     if browser.engine == SAFARI:
         commands = [["open", str(result.extension_dir)]]
     else:
-        commands = [["open", "-R", str(result.extension_dir / "manifest.json")]]
-        app = browser.app_path()
+        commands = [browser_detect.reveal_command(
+            result.extension_dir / "manifest.json", platform
+        )]
+        app = browser.app_path(platform)
         if app is not None:
-            commands.append(["open", "-a", str(app), browser.extensions_url])
-    for command in commands:
-        try:
-            runner(command, check=False, timeout=10)
-        except (OSError, subprocess.SubprocessError):
-            pass
+            commands.append(
+                browser_detect.open_url_command(app, browser.extensions_url, platform)
+            )
+    browser_detect.run_quietly(commands, runner or browser_detect.spawn)

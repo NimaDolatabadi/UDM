@@ -116,6 +116,9 @@ QLabel[muted="true"] {{
 QLabel[tone="warning"] {{
     color: {theme.status_warning};
 }}
+QLabel[tone="success"] {{
+    color: {theme.status_success};
+}}
 
 QFrame#segmented {{
     background: {theme.bg_sunken};

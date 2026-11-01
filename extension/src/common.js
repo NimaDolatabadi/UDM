@@ -6,6 +6,34 @@
 const api = globalThis.browser ?? globalThis.chrome;
 const NATIVE_HOST = "com.udm.capture";
 const DEFAULT_SETTINGS = { captureDownloads: true, showOverlay: true };
+// Message format version, kept in step with udm/bridge/protocol.py. UDM
+// releases from before versioning send no fields and speak version 1.
+const PROTOCOL_VERSION = 1;
+const MIN_PROTOCOL_VERSION = 1;
+
+/* Identify this extension on every message, so UDM can check compatibility. */
+const CLIENT = {
+  protocol: PROTOCOL_VERSION,
+  minProtocol: MIN_PROTOCOL_VERSION,
+  extensionVersion: api.runtime.getManifest().version,
+  engine: engineName(api.runtime.getURL("")),
+};
+
+function engineName(baseUrl) {
+  if (baseUrl.startsWith("moz-extension:")) return "firefox";
+  if (baseUrl.startsWith("safari-web-extension:")) return "safari";
+  return "chromium";
+}
+
+/* Return which side to update when UDM's reply shows an incompatible protocol. */
+function compatibilityProblem(reply) {
+  if (!reply?.ok) return reply?.incompatible ? reply.error : "";
+  const theirs = Number.isInteger(reply.protocol) ? reply.protocol : 1;
+  const theirMinimum = Number.isInteger(reply.minProtocol) ? reply.minProtocol : 1;
+  if (theirs < MIN_PROTOCOL_VERSION) return "This UDM is too old for the extension. Update UDM.";
+  if (PROTOCOL_VERSION < theirMinimum) return "UDM needs a newer UDM Capture. Update the extension.";
+  return "";
+}
 
 async function getSettings() {
   const stored = await api.storage.local.get(DEFAULT_SETTINGS);
@@ -19,13 +47,13 @@ async function saveSettings(changes) {
 /* Send one message to UDM through the native host and never throw. */
 async function sendToUdm(message) {
   try {
-    const reply = await api.runtime.sendNativeMessage(NATIVE_HOST, message);
+    const reply = await api.runtime.sendNativeMessage(NATIVE_HOST, { ...message, ...CLIENT });
     return reply ?? { ok: false, error: "No reply from UDM" };
   } catch (error) {
     return {
       ok: false,
       hostMissing: true,
-      error: "UDM is not connected. Install the extension from UDM Options.",
+      error: "UDM is not connected. Install UDM and open it once to connect the extension.",
       detail: String(error?.message ?? error),
     };
   }

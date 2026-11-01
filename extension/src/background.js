@@ -38,8 +38,14 @@ async function createMenus() {
   for (const menu of menus) api.contextMenus.create(menu);
 }
 
-api.runtime.onInstalled.addListener(createMenus);
-api.runtime.onStartup.addListener(createMenus);
+/* Menus are rebuilt and UDM is told the extension is present on each start. */
+function onBrowserStart() {
+  createMenus();
+  sendToUdm({ type: "ping" });
+}
+
+api.runtime.onInstalled.addListener(onBrowserStart);
+api.runtime.onStartup.addListener(onBrowserStart);
 
 api.contextMenus.onClicked.addListener(async (info, tab) => {
   const page = { referrer: info.pageUrl ?? tab?.url ?? "", title: tab?.title ?? "" };

@@ -8,14 +8,32 @@ import sys
 import tempfile
 
 APP_NAME = "UDM"
+DARWIN = "darwin"
+WINDOWS = "windows"
+LINUX = "linux"
 # macOS limits Unix socket paths to 104 bytes including the terminator.
 _MAX_SOCKET_PATH = 100
+# Windows named pipes live in this namespace; Qt and Python both accept it.
+PIPE_PREFIX = "\\\\.\\pipe\\"
 _PACKAGE_ROOT = Path(__file__).resolve().parent.parent
 
 
 def is_frozen():
     """Return whether the process runs from a PyInstaller bundle."""
     return bool(getattr(sys, "frozen", False))
+
+
+def platform_key(name=None):
+    """Return ``darwin``, ``windows``, or ``linux`` for ``sys.platform``.
+
+    Every other Unix is treated as Linux, which shares its XDG locations.
+    """
+    name = name or sys.platform
+    if name == "darwin":
+        return DARWIN
+    if name.startswith("win"):
+        return WINDOWS
+    return LINUX
 
 
 def resource_dir():
@@ -63,7 +81,12 @@ def bridge_socket_path():
     The socket lives in the data directory unless that path exceeds the Unix
     socket length limit; then a short per-user, per-data-directory name in the
     system temporary directory is used, derived identically by both processes.
+    On Windows it is a named pipe, returned as a ``\\\\.\\pipe\\`` string,
+    because Qt's local server uses named pipes there.
     """
+    if platform_key() == WINDOWS:
+        digest = hashlib.sha256(os.fsencode(data_dir())).hexdigest()[:12]
+        return PIPE_PREFIX + f"udm-{digest}"
     preferred = data_dir() / "bridge.sock"
     if len(os.fsencode(preferred)) <= _MAX_SOCKET_PATH:
         return preferred

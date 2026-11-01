@@ -7,6 +7,7 @@ import threading
 from PyQt6.QtCore import QObject, pyqtSignal
 from PyQt6.QtNetwork import QLocalServer
 
+from udm.paths import PIPE_PREFIX
 from udm.bridge.protocol import (
     MAX_MESSAGE_BYTES,
     BridgeError,
@@ -56,7 +57,9 @@ class BridgeServer(QObject):
         live instance owns the path, because a stale socket file is removed.
         """
         socket_path = str(socket_path)
-        Path(socket_path).parent.mkdir(parents=True, exist_ok=True)
+        # Windows named pipes have no folder to create.
+        if not socket_path.startswith(PIPE_PREFIX):
+            Path(socket_path).parent.mkdir(parents=True, exist_ok=True)
         QLocalServer.removeServer(socket_path)
         if not self.server.listen(socket_path):
             logging.error("Bridge listen failed: %s", self.server.errorString())
