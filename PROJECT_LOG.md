@@ -3,6 +3,19 @@
 This file records project changes in reverse chronological order. Every entry
 corresponds to the canonical version in `VERSION` at the time of the change.
 
+## 2026-11-01 - 0.12.2 - Patch
+
+- Fixed an intermittent macOS CI crash ("TypeError: () missing 1 required
+  positional argument: 'value'", then Abort trap) that failed `main` at 0.10.0
+  and 0.12.1 in whichever test happened to be running. UI tests left real
+  worker threads running: `ProgressTests` admitted a real `DownloadWorker`,
+  and the one-second queue timer could start real workers after a
+  `start_worker` patch ended, which also made a real network request. When
+  such a thread finished, its signals reached a closed test window and PyQt
+  aborted the run. `MainWindowTestCase` (`tests/qt_support.py`) now stops the
+  queue timer in `setUp` and cancels and joins every real worker in
+  `tearDown`. Test-only change; the app is unchanged.
+
 ## 2026-11-01 - 0.12.1 - Patch
 
 - Fixed the Ubuntu CI failures from 0.12.0. Five older tests assumed macOS

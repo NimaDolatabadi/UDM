@@ -7,6 +7,7 @@ import unittest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
+from PyQt6.QtCore import QThread
 from PyQt6.QtWidgets import QApplication, QTableWidgetItem
 
 from udm.config import ConfigManager
@@ -58,11 +59,29 @@ class MainWindowTestCase(QtTestCase):
             config_manager=self.manager,
             sync_startup=False,
         )
+        # Tests admit downloads by calling reconcile_download_queue directly.
+        # The periodic timer would otherwise start real workers at any later
+        # event-loop turn, including after a start_worker patch has ended.
+        self.window.download_scheduler_timer.stop()
 
     def tearDown(self):
+        self._stop_real_workers()
         self.window.close()
         self.application.processEvents()
         self.temp.cleanup()
+
+    def _stop_real_workers(self):
+        """Cancel and join worker threads a test started.
+
+        A thread that outlives its window delivers signals into later tests,
+        and PyQt aborts the whole run when such a delivery fails.
+        """
+        for worker in list(self.window.active_workers.values()):
+            if isinstance(worker, QThread):
+                worker.cancel()
+                if not worker.wait(10000):
+                    worker.terminate()
+                    worker.wait()
 
 
     @staticmethod
